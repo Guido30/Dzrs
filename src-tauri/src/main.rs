@@ -2,6 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod models;
+mod slavart_api;
+
+use models::slavart::Search;
+use slavart_api::SlavartDownloadItems;
 
 use std::path::{Path, PathBuf};
 use tauri::api::dialog::blocking::FileDialogBuilder;
@@ -10,45 +14,31 @@ use tauri::{
 };
 
 #[tauri::command]
-async fn get_slavart_items(query: String) -> Result<String, ()> {
-    let response = match reqwest::get(format!(
+async fn get_slavart_tracks(query: String) -> Result<SlavartDownloadItems, ()> {
+    let response = reqwest::get(format!(
         "https://slavart.gamesdrive.net/api/search?q={query}"
     ))
-    .await
-    {
-        Ok(r) => r,
+    .await;
+    match response {
+        Ok(r) => {
+            let body = r.text().await;
+            match body {
+                Ok(b) => {
+                    let search: Result<Search, serde_json::Error> =
+                        serde_json::from_str(b.as_str());
+                    match search {
+                        Ok(s) => {
+                            let tracks = SlavartDownloadItems::from(s);
+                            Ok(tracks)
+                        }
+                        Err(_) => return Err(()),
+                    }
+                }
+                Err(_) => return Err(()),
+            }
+        }
         Err(_) => return Err(()),
-    };
-    let body = match response.text().await {
-        Ok(t) => t,
-        Err(_) => return Err(()),
-    };
-    let value: serde_json::Value = match serde_json::from_str(body.as_str()) {
-        Ok(v) => v,
-        Err(_) => return Err(()),
-    };
-    let tracks: Vec<models::slavart::Track> =
-        match serde_json::from_value(value["tracks"]["items"].clone()) {
-            Ok(v) => v,
-            Err(_) => return Err(()),
-        };
-    let items: Vec<models::slavart::SlavartDownloadItem> = tracks
-        .into_iter()
-        .map(|item| models::slavart::SlavartDownloadItem {
-            thumbnail: item.album.image.thumbnail,
-            performer_name: item.performer.name,
-            album_title: item.album.title,
-            duration: item.duration,
-            title: item.title,
-            id: item.id,
-        })
-        .collect();
-
-    let items_str = match serde_json::to_string(&items) {
-        Ok(v) => v,
-        Err(_) => return Err(()),
-    };
-    Ok(items_str)
+    }
 }
 
 fn build_menubar() -> Menu {
@@ -233,7 +223,7 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_slavart_items])
+        .invoke_handler(tauri::generate_handler![get_slavart_tracks])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

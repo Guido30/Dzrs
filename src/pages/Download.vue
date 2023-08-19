@@ -4,10 +4,12 @@ import { invoke } from '@tauri-apps/api/tauri'
 import { IconDownload } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 
-let items = ref([{}]);
+let items = ref([]);
 
 function handleInput(e) {
-  invoke("get_slavart_items", { query: `${e.target.value}` }).then((result) => items.value = JSON.parse(result)).catch((err) => console.log(err));
+  invoke("get_slavart_tracks", { query: `${e.target.value}` })
+    .then((result) => {items.value = result.items})
+    .catch((err) => console.log("ERR", err));
 }
 </script>
 
@@ -35,12 +37,14 @@ function handleInput(e) {
 <style scoped>
 .container {
   height: inherit;
-  padding-left: 5px;
-  padding-right: 5px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .frame {
-  margin-top: 10px;
+  margin-top: 15px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-left: 10px;
