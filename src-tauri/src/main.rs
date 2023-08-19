@@ -9,11 +9,47 @@ use tauri::{
     CustomMenuItem, Menu, MenuItem, Submenu, WindowBuilder, WindowEvent,
 };
 
-// #[tauri::command]
-// async fn get_slavart_items(
-//     query: &str,
-// ) -> Vec<models::slavart::SlavartDownloadItem> {
-// }
+#[tauri::command]
+async fn get_slavart_items(query: String) -> Result<String, ()> {
+    let response = match reqwest::get(format!(
+        "https://slavart.gamesdrive.net/api/search?q={query}"
+    ))
+    .await
+    {
+        Ok(r) => r,
+        Err(_) => return Err(()),
+    };
+    let body = match response.text().await {
+        Ok(t) => t,
+        Err(_) => return Err(()),
+    };
+    let value: serde_json::Value = match serde_json::from_str(body.as_str()) {
+        Ok(v) => v,
+        Err(_) => return Err(()),
+    };
+    let tracks: Vec<models::slavart::Track> =
+        match serde_json::from_value(value["tracks"]["items"].clone()) {
+            Ok(v) => v,
+            Err(_) => return Err(()),
+        };
+    let items: Vec<models::slavart::SlavartDownloadItem> = tracks
+        .into_iter()
+        .map(|item| models::slavart::SlavartDownloadItem {
+            thumbnail: item.album.image.thumbnail,
+            performer_name: item.performer.name,
+            album_title: item.album.title,
+            duration: item.duration,
+            title: item.title,
+            id: item.id,
+        })
+        .collect();
+
+    let items_str = match serde_json::to_string(&items) {
+        Ok(v) => v,
+        Err(_) => return Err(()),
+    };
+    Ok(items_str)
+}
 
 fn build_menubar() -> Menu {
     Menu::new()
@@ -110,7 +146,9 @@ fn main() {
                 "download".to_string(),
                 tauri::WindowUrl::App("download".into()),
             )
-            .min_inner_size(665.0, 520.0)
+            .min_inner_size(900.0, 520.0)
+            .max_inner_size(1400.0, 1000.0)
+            .maximizable(false)
             .fullscreen(false)
             .resizable(true)
             .visible(false)
@@ -133,6 +171,7 @@ fn main() {
             )
             .min_inner_size(600.0, 400.0)
             .fullscreen(false)
+            .maximizable(false)
             .resizable(true)
             .visible(false)
             .title("Settings")
@@ -154,6 +193,7 @@ fn main() {
             )
             .inner_size(400.0, 200.0)
             .fullscreen(false)
+            .maximizable(false)
             .resizable(false)
             .visible(false)
             .title("About")
@@ -193,7 +233,7 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![get_slavart_items])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
