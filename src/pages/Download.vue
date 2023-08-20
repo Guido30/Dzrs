@@ -3,6 +3,7 @@ import { ref, reactive } from "vue";
 import { invoke } from '@tauri-apps/api/tauri'
 import { IconDownload } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
+import HeaderBar from "../components/HeaderBar.vue";
 
 let items = ref([]);
 
@@ -15,6 +16,7 @@ function handleInput(e) {
 
 <template>
   <div class="container">
+    <HeaderBar :title="'Download'" />
     <div class="row">
       <IconDownload size="30" style="display: block; margin: auto" />
       <input placeholder="Song name..." @keypress.enter="handleInput" />

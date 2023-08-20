@@ -126,97 +126,28 @@ fn main() {
             .title("Dzrs")
             .build()?;
 
-            main_win.on_window_event(move |event| match event {
-                WindowEvent::CloseRequested { .. } => app_handle.exit(0),
-                _ => (),
-            });
-
-            let download_win = WindowBuilder::new(
-                app,
-                "download".to_string(),
-                tauri::WindowUrl::App("download".into()),
-            )
-            .min_inner_size(900.0, 520.0)
-            .max_inner_size(1400.0, 1000.0)
-            .maximizable(false)
-            .fullscreen(false)
-            .resizable(true)
-            .visible(false)
-            .title("Download")
-            .build()?;
-
-            let download_win_ = download_win.clone();
-            download_win.on_window_event(move |event| match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    let _ = download_win_.hide();
-                }
-                _ => (),
-            });
-
-            let settings_win = WindowBuilder::new(
-                app,
-                "settings".to_string(),
-                tauri::WindowUrl::App("settings".into()),
-            )
-            .min_inner_size(600.0, 400.0)
-            .fullscreen(false)
-            .maximizable(false)
-            .resizable(true)
-            .visible(false)
-            .title("Settings")
-            .build()?;
-
-            let settings_win_ = settings_win.clone();
-            settings_win.on_window_event(move |event| match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    let _ = settings_win_.hide();
-                }
-                _ => (),
-            });
-
-            let about_win = WindowBuilder::new(
-                app,
-                "about".to_string(),
-                tauri::WindowUrl::App("about".into()),
-            )
-            .inner_size(400.0, 200.0)
-            .fullscreen(false)
-            .maximizable(false)
-            .resizable(false)
-            .visible(false)
-            .title("About")
-            .build()?;
-
-            let about_win_ = about_win.clone();
-            about_win.on_window_event(move |event| match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    let _ = about_win_.hide();
-                }
-                _ => (),
-            });
-
+            let main_win_ = main_win.clone();
             main_win.on_menu_event(move |e| match e.menu_item_id() {
                 "open_folder" => {
+                    let _ = main_win_.emit("page-change", "/");
                     let file_dialog = build_file_dialog();
                     let folder = file_dialog.pick_folder();
                     println!("{:?}", folder);
                 }
                 "open_files" => {
+                    let _ = main_win_.emit("page-change", "/");
                     let file_dialog = build_file_dialog();
                     let files = file_dialog.pick_files();
                     println!("{:?}", files);
                 }
                 "download" => {
-                    download_win.show().unwrap();
+                    let _ = main_win_.emit("page-change", "download");
                 }
                 "options" => {
-                    settings_win.show().unwrap();
+                    let _ = main_win_.emit("page-change", "settings");
                 }
                 "about" => {
-                    about_win.show().unwrap();
+                    let _ = main_win_.emit("page-change", "about");
                 }
                 _ => (),
             });
