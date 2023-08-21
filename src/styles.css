@@ -29,18 +29,17 @@
 }
 
 body {
-  height: 97vh;
-}
-
-#app {
-  height: inherit;
+  margin: 0px;
 }
 
 .container {
-  margin: 0;
+  box-sizing: border-box;
+  height: 100vh;
+  margin: 0px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: start;
   text-align: center;
 }
 
@@ -72,7 +71,8 @@ body {
 }
 
 input,
-button {
+button,
+.button {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;

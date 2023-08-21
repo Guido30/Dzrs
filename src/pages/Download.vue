@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from "@tauri-apps/api/tauri"
 import { IconSearch, IconFolder, IconTrash } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import HeaderBar from "../components/HeaderBar.vue";
@@ -19,16 +19,17 @@ const infoItemsIds = computed({
   }
 });
 
-function handleInput(e) {
-  invoke("get_slavart_tracks", { query: `${e.target.value}` })
+async function handleInput(e) {
+  await invoke("get_slavart_tracks", { query: `${e.target.value}` })
     .then((result) => {slavartItems.value = result.items})
     .catch((err) => console.log("ERR", err));
 }
 
-function addInfoItem(item) {
+async function downloadTrack(item) {
   if (!infoItemsIds.value.includes(item.id)) {
     infoItems.value.push(item)
   };
+  const downloadStatus = await invoke("download_track", { id: item.id, filename: item.title }).then((res) => true).catch((err) => {false; console.log(err);});
 };
 
 function removeInfoItem(id) {
@@ -54,7 +55,7 @@ function removeInfoItem(id) {
           <p style="width: 10%;">Duration</p>
         </div>
         <div class="column">
-          <SlavartDownloadItem @downloadRequested="addInfoItem" :item-data="item" v-for="(item, index) in slavartItems" :key="index"></SlavartDownloadItem>
+          <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
         </div>
       </div>
       <div class="frame info-items" style="flex-shrink: 0;">
@@ -62,11 +63,11 @@ function removeInfoItem(id) {
           <p style="width: 100%;">Downloads</p>
         </div>
         <div>
-          <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="(item, index) in infoItems" :key="index"></DownloadInfoItem>
+          <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
         </div>
         <div class="row downloads-btns">
             <IconFolder size="30" class="icon"/>
-            <IconTrash @click="infoItems = []; console.log(infoItems)" size="30" style="cursor: pointer;" class="icon"/>
+            <IconTrash @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
     </div>
@@ -74,14 +75,6 @@ function removeInfoItem(id) {
 </template>
 
 <style scoped>
-.container {
-  height: inherit;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
 .frame {
   margin-top: 15px;
   overflow-y: auto;

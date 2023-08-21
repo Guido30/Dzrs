@@ -60,7 +60,7 @@ pub struct AlbumItem {
     pub sampleable: bool,
     pub downloadable: bool,
     pub displayable: bool,
-    pub purchasable_at: i64,
+    pub purchasable_at: Option<i64>,
     pub streamable_at: i64,
     pub hires: bool,
     pub hires_streamable: bool,
