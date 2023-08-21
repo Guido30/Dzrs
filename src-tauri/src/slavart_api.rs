@@ -11,6 +11,7 @@ pub struct SlavartDownloadItems {
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct SlavartDownloadItem {
     pub thumbnail: String,
+    pub large: String,
     pub performer_name: String,
     pub album_title: String,
     pub duration: i64,
@@ -40,6 +41,7 @@ impl From<Search> for SlavartDownloadItems {
             .into_iter()
             .map(|item| SlavartDownloadItem {
                 thumbnail: item.album.image.thumbnail.unwrap_or_default(),
+                large: item.album.image.large,
                 performer_name: item.performer.name,
                 album_title: item.album.title,
                 duration: item.duration,
