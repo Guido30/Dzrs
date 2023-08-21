@@ -5,15 +5,7 @@ import { IconDownload } from "@tabler/icons-vue";
 const prop = defineProps(["item-data"]);
 const emit = defineEmits(["downloadRequested"])
 
-const data = {
-    thumbnail: prop.itemData.thumbnail,
-    large: prop.itemData.large,
-    performer_name: prop.itemData.performer_name,
-    album_title: prop.itemData.album_title,
-    duration: prop.itemData.duration,
-    title: prop.itemData.title,
-    id: prop.itemData.id,
-  };
+const data = reactive({ ...prop.itemData });
 
 const imgDarkenStyle = reactive({ transform: "scale(1.0)" });
 

@@ -7,7 +7,7 @@ let props = defineProps(["title"])
 
 <template>
   <div id="button" class="row" style="margin-bottom: 10px;" @click="router.push({ path: '/'})">
-    <div class="row" style="padding: 10px;">
+    <div class="row">
         <IconChevronsLeft size="25" style="display: block; margin: auto; margin-right: 10px;" />
         <h1>{{ props.title }}</h1>
     </div>
@@ -24,6 +24,14 @@ h1 {
     margin-bottom: 2px;
     user-select: none;
 }
+
+.row {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 #button {
     background-color: rgba(15, 15, 15, 0.6);
     border-radius: 40px;

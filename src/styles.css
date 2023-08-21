@@ -49,6 +49,12 @@ body {
   justify-content: center;
 }
 
+.column {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .frame {
   padding: 4px;
   border-radius: 8px;
@@ -57,6 +63,12 @@ body {
   background-color: #0f0f0f98;
   transition: border-color 0.25s;
   box-shadow: 0 2px 2px #00000033;
+}
+
+.icon {
+  margin-top: auto;
+  margin-bottom: auto;
+  flex-shrink: 0;
 }
 
 input,

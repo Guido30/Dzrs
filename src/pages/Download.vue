@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import { invoke } from '@tauri-apps/api/tauri'
-import { IconSearch } from "@tabler/icons-vue";
+import { IconSearch, IconFolder, IconTrash } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import HeaderBar from "../components/HeaderBar.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
@@ -32,7 +32,6 @@ function addInfoItem(item) {
 };
 
 function removeInfoItem(id) {
-  console.log(infoItemsIds.value);
   infoItemsIds.value = id
 }
 
@@ -54,7 +53,7 @@ function removeInfoItem(id) {
           <p style="width: 20%;">Artist</p>
           <p style="width: 10%;">Duration</p>
         </div>
-        <div class="row" style="flex-direction: column;">
+        <div class="column">
           <SlavartDownloadItem @downloadRequested="addInfoItem" :item-data="item" v-for="(item, index) in slavartItems" :key="index"></SlavartDownloadItem>
         </div>
       </div>
@@ -62,8 +61,12 @@ function removeInfoItem(id) {
         <div class="items-header">
           <p style="width: 100%;">Downloads</p>
         </div>
-        <div class="row" style="flex-direction: column;">
+        <div>
           <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="(item, index) in infoItems" :key="index"></DownloadInfoItem>
+        </div>
+        <div class="row downloads-btns">
+            <IconFolder size="30" class="icon"/>
+            <IconTrash @click="infoItems = []; console.log(infoItems)" size="30" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
     </div>
@@ -86,6 +89,7 @@ function removeInfoItem(id) {
   padding-left: 10px;
   padding-right: 10px;
   padding-top: 0px;
+  padding-bottom: 0px;
 }
 
 .items-header {
@@ -111,6 +115,16 @@ function removeInfoItem(id) {
 
 .info-items {
   width: 200px;
+}
+
+.downloads-btns {
+  margin-top: auto;
+  justify-content: flex-end;
+  padding: 5px;
+  border-top: 1px solid #2f2f2f;
+  position: sticky;
+  bottom: 0px;
+  background-color: #1c1c1c;
 }
 
 input {

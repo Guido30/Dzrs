@@ -7,8 +7,10 @@ mod slavart_api;
 use models::slavart::Search;
 use slavart_api::SlavartDownloadItems;
 
+use std::fmt::format;
 use std::path::{Path, PathBuf};
-use tauri::api::dialog::blocking::FileDialogBuilder;
+use tauri::api::dialog::blocking::{FileDialogBuilder, MessageDialogBuilder};
+use tauri::api::dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri::{
     CustomMenuItem, Menu, MenuItem, Submenu, WindowBuilder, WindowEvent,
 };
@@ -110,7 +112,7 @@ fn main() {
                     config::FileFormat::Ini,
                 ))
                 .build()
-                .unwrap();
+                .unwrap_or_default();
 
             let menu = build_menubar();
             let main_win = WindowBuilder::new(
