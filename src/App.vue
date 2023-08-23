@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { onMounted, shallowRef } from 'vue';
+import { invoke } from '@tauri-apps/api';
 import { appWindow } from "@tauri-apps/api/window";
 import Main from './pages/Main.vue';
 import Download from './pages/Download.vue';
@@ -7,7 +8,7 @@ import Settings from './pages/Settings.vue';
 import About from './pages/About.vue';
 import HeaderBar from './components/HeaderBar.vue';
 
-const activePage = ref(Main);
+const activePage = shallowRef(Main);
 
 appWindow.listen("page-change", (event) => {
     switch (event.payload) {
@@ -23,6 +24,10 @@ appWindow.listen("page-change", (event) => {
         default:
             activePage.value = Main;
     }
+});
+
+onMounted(async () => {
+    await invoke("show_window");
 });
 </script>
 
@@ -81,7 +86,7 @@ body {
 
 .container {
     box-sizing: border-box;
-    height: calc(100vh - 67px); /* (Container - HeaderBar) */
+    height: calc(100vh - 80px); /* (Container - HeaderBar) */
     margin: 0px;
     padding: 10px;
     display: flex;
@@ -103,7 +108,7 @@ body {
 
 .frame {
     padding: 4px;
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid transparent;
     background-color: var(--color-bg-1);
     box-shadow: 2px 2px 5px var(--color-shadow);

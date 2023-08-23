@@ -110,6 +110,14 @@ async fn update_config(
     Ok(())
 }
 
+#[tauri::command]
+async fn show_window(window: tauri::Window) -> Result<(), String> {
+    match window.show() {
+        Ok(()) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
 fn main() {
     let app_data_path = helpers::app_data_dir();
     let config_path = app_data_path.join("config.json");
@@ -125,6 +133,7 @@ fn main() {
     tauri::Builder::default()
         .manage(Mutex::new(configuration))
         .invoke_handler(tauri::generate_handler![
+            show_window,
             get_config_values,
             get_config,
             update_config,

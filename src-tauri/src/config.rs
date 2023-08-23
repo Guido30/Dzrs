@@ -12,6 +12,7 @@ pub struct DzrsConfiguration {
     #[serde(skip_serializing, skip_deserializing)]
     _loaded: bool,
     pub download_path: String,
+    pub file_template: String,
 }
 
 impl DzrsConfiguration {
@@ -36,6 +37,7 @@ impl DzrsConfiguration {
     pub fn update(&mut self, field: String, value: String) {
         match field.as_str() {
             "download_path" => self.download_path = value,
+            "file_template" => self.file_template = value,
             _ => (),
         }
     }
@@ -58,6 +60,7 @@ impl Default for DzrsConfiguration {
             _path: PathBuf::new(),
             _loaded: false,
             download_path: "".into(),
+            file_template: "".into(),
         }
     }
 }

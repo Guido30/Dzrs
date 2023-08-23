@@ -23,29 +23,27 @@ function emitDownloadRequested() {
 </script>
 
 <template>
-  <div class="item-data">
-    <div class="img-container" @click="scaleImage(); emitDownloadRequested()">
+  <tr>
+    <td><!-- Empty cell reserved for table filter --></td>
+    <td class="img-container" @click="scaleImage(); emitDownloadRequested()">
       <IconDownload size="30" class="icon-download"/>
       <div class="img-darken" :style="imgDarkenStyle">
         <img :src="prop.itemData.thumbnail">
       </div>
-    </div>
-    <p style="width: 40%;">{{ prop.itemData.title }}</p>
-    <p style="width: 25%;">{{ prop.itemData.album_title }}</p>
-    <p style="width: 20%;">{{ prop.itemData.performer_name }}</p>
-    <p style="width: 10%;">{{ Math.floor(prop.itemData.duration / 60) }}:{{ (prop.itemData.duration % 60).toString().padStart(2, "0") }}</p>
-  </div>
+    </td>
+    <td class="text-pad">{{ prop.itemData.title }}</td>
+    <td class="text-pad">{{ prop.itemData.album_title }}</td>
+    <td class="text-pad">{{ prop.itemData.performer_name }}</td>
+    <td>{{ Math.floor(prop.itemData.duration / 60) }}:{{ (prop.itemData.duration % 60).toString().padStart(2, "0") }}</td>
+  </tr>
 </template>
 
 <style scoped>
-.item-data {
-  display: flex;
-  border-radius: 20px;
-  min-height: 60px;
+tr {
+  transition: background-color 0.2s ease-in-out;
 }
 
-.item-data:hover {
-  transition: background-color 0.2s ease-in-out;
+tr:hover {
   background-color: var(--color-hover);
 }
 
@@ -55,6 +53,8 @@ function emitDownloadRequested() {
   margin-right: 20px;
   margin-top: auto;
   margin-bottom: auto;
+  padding-top: 5px;
+  padding-bottom: 5px;
   position: relative;
   cursor: pointer;
   user-select: none;
@@ -74,15 +74,19 @@ img {
   border-radius: 8px;
 }
 
-p {
-  margin: 0px;
-  margin-top: auto;
-  margin-bottom: auto;
-  margin-left: 20px;
-  margin-right: 20px;
+td {
+  max-width: 100px;
   overflow: scroll;
   white-space: nowrap;
   -ms-overflow-style: none;
+}
+
+td::-webkit-scrollbar {
+  display: none;
+}
+
+.text-pad {
+  padding-left: 10px;
 }
 
 .icon-download {
@@ -97,9 +101,5 @@ p {
 .img-container:hover > .icon-download {
   transition: opacity 0.2s ease;
   opacity: 100%;
-}
-
-p::-webkit-scrollbar {
-  display: none;
 }
 </style>

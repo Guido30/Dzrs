@@ -1,12 +1,16 @@
 <script setup>
-import { ref, reactive, computed } from "vue";
+import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
-import { IconSearch, IconFolder, IconTrash } from "@tabler/icons-vue";
+import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconArrowBarRight } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
+
+const inputElement = ref(null);
+
+const isDownloadExpanded = ref(false);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -18,8 +22,8 @@ const infoItemsIds = computed({
   }
 });
 
-async function handleInput(e) {
-  await invoke("get_slavart_tracks", { query: `${e.target.value}` })
+async function handleInput() {
+  await invoke("get_slavart_tracks", { query: `${inputElement.value}` })
     .then((result) => {slavartItems.value = result.items})
     .catch((err) => console.log("ERR", err));
 }
@@ -34,31 +38,46 @@ async function downloadTrack(item) {
 function removeInfoItem(id) {
   infoItemsIds.value = id
 }
-
 </script>
 
 <template>
-  <div class="container">
-    <div class="row">
-      <IconSearch size="30" style="display: block; margin: auto" />
-      <input placeholder="Song name..." @keypress.enter="handleInput" />
-    </div>
-    <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px;">
-      <div class="frame" style="flex-grow: 1">
-        <div class="items-header">
-          <p style="width: 5%;"></p>
-          <p style="width: 40%;">Title</p>
-          <p style="width: 25%;">Album</p>
-          <p style="width: 20%;">Artist</p>
-          <p style="width: 10%;">Duration</p>
-        </div>
-        <div class="column">
-          <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
+  <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw;">
+    <div class="column" style="flex-grow: 1; gap: 15px;">
+      <div class="row" style="flex-basis: 50px;">
+        <input placeholder="Song name..." @keypress.enter="handleInput" :ref="inputElement"/>
+        <button style="margin-left: 10px;" @click="handleInput()">
+            <IconSearch size="20" color="var(--color-text)" class="icon"/>
+        </button>
+        <button style="margin-left: 10px;" @click="isDownloadExpanded = !isDownloadExpanded">
+          <IconArrowBarRight size="20" color="var(--color-text)" class="icon" v-if="isDownloadExpanded"/>
+          <IconArrowBarLeft color="var(--color-text)" class="icon" v-else/>
+        </button>
+      </div>
+      <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px;">
+        <div class="frame" style="flex-grow: 1">
+          <table>
+            <thead class="table-header">
+              <tr>
+                <th style="width: 2%;">
+                  <IconDotsVertical size="18" class="icon table-filter-btn"/>
+                </th>
+                <th><!-- Reserved for image --></th>
+                <th>Title</th>
+                <th>Album</th>
+                <th>Artist</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
+            </tbody>
+          </table>
         </div>
       </div>
-      <div class="frame info-items" style="flex-shrink: 0;">
-        <div class="items-header">
-          <p style="width: 100%;">Downloads</p>
+    </div>
+    <div class="frame info-items" :class="{ 'expanded': isDownloadExpanded}">
+        <div class="table-header">
+          <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Downloads</p>
         </div>
         <div>
           <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
@@ -68,13 +87,11 @@ function removeInfoItem(id) {
             <IconTrash @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
 <style scoped>
 .frame {
-  margin-top: 15px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-left: 10px;
@@ -83,15 +100,17 @@ function removeInfoItem(id) {
   padding-bottom: 0px;
 }
 
-.items-header {
-  display: flex;
-  flex-direction: row;
+.table-header {
+  font-style: italic;
   background-color: var(--color-bg-1);
-  border-bottom: 1px solid var(--color-bg-2);
-  max-height: 30px;
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+.table-header th {
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-bg-2);
 }
 
 .items-header > p {
@@ -105,7 +124,10 @@ function removeInfoItem(id) {
 }
 
 .info-items {
-  width: 200px;
+  width: 0px;
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
 }
 
 .downloads-btns {
@@ -120,6 +142,30 @@ function removeInfoItem(id) {
 
 input {
   flex-grow: 1;
-  margin-left: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0px 4px;
+}
+
+.table-filter-btn {
+  margin-top: 4px;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.table-filter-btn:hover {
+  border: 1px solid var(--color-accent);
+  background-color: var(--color-hover);
+}
+
+.expanded {
+  display: flex;
+  width: 200px;
 }
 </style>

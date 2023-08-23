@@ -3,10 +3,11 @@ import { inject, ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { downloadDir } from "@tauri-apps/api/path";
-import { IconFolder } from "@tabler/icons-vue";
+import { IconFolder, IconTextSize } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
 const downloadInputValue = ref(inject("appConfig").download_path);
+const fileTemplateValue = ref(inject("appConfig").file_template);
 
 async function setDownloadPath() {
   const defaultPath = await downloadDir().then((result) => result).catch((_) => "");
@@ -34,14 +35,23 @@ async function setDownloadPath() {
           </button>
         </template>
       </SettingsGroup>
+      <SettingsGroup>
+        <template #head>
+          <IconTextSize size="30" class="icon setting-icon"/>
+          <h1>File Template</h1>
+        </template>
+        <template #body >
+          <p>Downloaded file names template</p>
+        </template>
+      </SettingsGroup>
     </div>
   </div>
 </template>
 
 <style scoped>
 .setting-icon {
-  margin-left: 20px;
-  margin-right: 10px;
+  margin-left: 30px;
+  margin-right: 20px;
 }
 
 h1 {

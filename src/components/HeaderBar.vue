@@ -1,9 +1,13 @@
 <script setup>
+import { ref } from "vue";
 import { appWindow } from "@tauri-apps/api/window";
-import { IconHome } from "@tabler/icons-vue";
+import Notifications from "./Notifications.vue";
 
-function sendPageChangeSignal(page) {
-  appWindow.emit('page-change', page)
+const activeButton = ref("Main");
+
+function emitPageChange(page) {
+  activeButton.value = page;
+  appWindow.emit('page-change', page);
 }
 
 </script>
@@ -12,21 +16,20 @@ function sendPageChangeSignal(page) {
   <div class="row header-bar" style="margin-bottom: 10px;">
     <img src="../assets/logox256.png">
     <div class="row header-btns">
-        <div class="row header-btn" @click="sendPageChangeSignal('Main')">
-          <!-- <IconHome size="30" class="icon"/> -->
+        <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main'}">
           <p>Home</p>
         </div>
-        <div class="row header-btn" @click="sendPageChangeSignal('Download')">
-          <!-- <IconHome size="30" class="icon"/> -->
+        <div class="row header-btn" @click="emitPageChange('Download')" :class="{ active: activeButton === 'Download'}">
           <p>Download</p>
         </div>
-        <div class="row header-btn" @click="sendPageChangeSignal('Settings')">
-          <!-- <IconHome size="30" class="icon"/> -->
+        <div class="row header-btn" @click="emitPageChange('Settings')" :class="{ active: activeButton === 'Settings'}">
           <p>Settings</p>
         </div>
-        <div class="row header-btn" @click="sendPageChangeSignal('About')">
-          <!-- <IconHome size="30" class="icon"/> -->
+        <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About'}">
           <p>About</p>
+        </div>
+        <div class="row header-btn" @click="">
+          <Notifications/>
         </div>
     </div>
   </div>
@@ -75,6 +78,10 @@ h1 {
   transition: all 0.2s ease-in-out;
 }
 
+.active {
+  background-color: var(--color-hover);
+}
+
 .header-btn:hover {
   background-color: var(--color-hover);
   border: 1px solid var(--color-accent);
@@ -85,6 +92,7 @@ img {
   height: 50px;
   margin-top: auto;
   margin-bottom: auto;
+  user-select: none;
 }
 
 p {
