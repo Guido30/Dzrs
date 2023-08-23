@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-// use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -9,8 +8,6 @@ use std::path::{Path, PathBuf};
 pub struct DzrsConfiguration {
     #[serde(skip_serializing, skip_deserializing)]
     _path: PathBuf,
-    #[serde(skip_serializing, skip_deserializing)]
-    _loaded: bool,
     pub download_path: String,
     pub file_template: String,
 }
@@ -21,9 +18,22 @@ impl DzrsConfiguration {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let file = File::open(path.clone())?;
         let reader = BufReader::new(file);
-        let mut result: DzrsConfiguration = serde_json::from_reader(reader)?;
+        let mut result: DzrsConfiguration =
+            match serde_json::from_reader(reader) {
+                Ok(conf) => conf,
+                Err(_) => {
+                    let default_conf = Self::default();
+                    let _conf_str =
+                        serde_json::to_string_pretty(&Self::default())?;
+                    match std::fs::write(path.clone(), _conf_str) {
+                        Ok(_) => default_conf,
+                        Err(err) => {
+                            return Err(Box::new(Error(err.to_string())))
+                        }
+                    }
+                }
+            };
         result._path = path.clone();
-        result._loaded = true;
         Ok(result)
     }
 
@@ -43,14 +53,10 @@ impl DzrsConfiguration {
     }
 
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if self._loaded {
-            let json_string = serde_json::to_string_pretty(&self)?;
-            let mut file = File::create(&self._path)?;
-            file.write_all(json_string.as_bytes())?;
-            Ok(())
-        } else {
-            Err(Box::from(Error("Config was not loaded from file!".into())))
-        }
+        let json_string = serde_json::to_string_pretty(&self)?;
+        let mut file = File::create(&self._path)?;
+        file.write_all(json_string.as_bytes())?;
+        Ok(())
     }
 }
 
@@ -58,9 +64,8 @@ impl Default for DzrsConfiguration {
     fn default() -> Self {
         Self {
             _path: PathBuf::new(),
-            _loaded: false,
             download_path: "".into(),
-            file_template: "".into(),
+            file_template: "%title% - %album%".into(),
         }
     }
 }

@@ -9,7 +9,6 @@ mod slavart_api;
 use config::DzrsConfiguration;
 use models::slavart::Search;
 use slavart_api::SlavartDownloadItems;
-use tauri::api::file;
 
 use std::fs::File;
 use std::io::Write;
@@ -17,8 +16,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::api::dialog::blocking::{FileDialogBuilder, MessageDialogBuilder};
 use tauri::api::dialog::{MessageDialogButtons, MessageDialogKind};
-use tauri::State;
-use tauri::WindowBuilder;
+use tauri::{State, Window};
 
 #[tauri::command]
 async fn get_slavart_tracks(
@@ -111,7 +109,7 @@ async fn update_config(
 }
 
 #[tauri::command]
-async fn show_window(window: tauri::Window) -> Result<(), String> {
+async fn show_window(window: Window) -> Result<(), String> {
     match window.show() {
         Ok(()) => Ok(()),
         Err(err) => Err(err.to_string()),

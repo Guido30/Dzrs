@@ -1,16 +1,16 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, inject } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
 import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconArrowBarRight } from "@tabler/icons-vue";
+import { parseFileName } from "../helpers";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
-
 const inputElement = ref(null);
-
 const isDownloadExpanded = ref(false);
+const fileTemplate = ref(inject("appConfig").file_template);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -32,7 +32,8 @@ async function downloadTrack(item) {
   if (!infoItemsIds.value.includes(item.id)) {
     infoItems.value.push(item)
   };
-  const downloadStatus = await invoke("download_track", { id: item.id, filename: item.title }).then((res) => true).catch((err) => {false; console.log(err);});
+  const fileName = parseFileName(item, fileTemplate.value);
+  const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName }).then((res) => true).catch((err) => {false; console.log(err);});
 };
 
 function removeInfoItem(id) {

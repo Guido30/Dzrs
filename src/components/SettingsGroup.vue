@@ -2,6 +2,8 @@
 import { ref } from "vue";
 import { IconCaretRightFilled } from "@tabler/icons-vue";
 
+const prop = defineProps(["body-as-column"])
+
 const header = ref(null);
 const body = ref(null);
 
@@ -20,7 +22,7 @@ function toggleExpandGroup() {
 
             </slot>
         </div>
-        <div class="row setting-body" ref="body">
+        <div :class="{ 'column': prop.bodyAsColumn }" class="setting-body" ref="body">
             <slot name="body">
 
             </slot>
