@@ -1,17 +1,34 @@
 <script setup>
-import router from "../router";
-import { IconChevronsLeft } from "@tabler/icons-vue";
+import { appWindow } from "@tauri-apps/api/window";
+import { IconHome } from "@tabler/icons-vue";
 
-let props = defineProps(["title"])
+function sendPageChangeSignal(page) {
+  appWindow.emit('page-change', page)
+}
+
 </script>
 
 <template>
-  <div id="button" class="row" style="margin-bottom: 10px;" @click="router.push({ path: '/'})">
-    <div class="row">
-        <IconChevronsLeft size="25" style="display: block; margin: auto; margin-right: 10px;" />
-        <h1>{{ props.title }}</h1>
+  <div class="row header-bar" style="margin-bottom: 10px;">
+    <img src="../assets/logox256.png">
+    <div class="row header-btns">
+        <div class="row header-btn" @click="sendPageChangeSignal('Main')">
+          <!-- <IconHome size="30" class="icon"/> -->
+          <p>Home</p>
+        </div>
+        <div class="row header-btn" @click="sendPageChangeSignal('Download')">
+          <!-- <IconHome size="30" class="icon"/> -->
+          <p>Download</p>
+        </div>
+        <div class="row header-btn" @click="sendPageChangeSignal('Settings')">
+          <!-- <IconHome size="30" class="icon"/> -->
+          <p>Settings</p>
+        </div>
+        <div class="row header-btn" @click="sendPageChangeSignal('About')">
+          <!-- <IconHome size="30" class="icon"/> -->
+          <p>About</p>
+        </div>
     </div>
-    <div style="flex-grow: 1;"></div>
   </div>
 </template>
 
@@ -26,21 +43,54 @@ h1 {
 }
 
 .row {
-  padding-top: 2px;
-  padding-bottom: 2px;
   padding-left: 10px;
   padding-right: 10px;
 }
 
-#button {
-    background-color: rgba(15, 15, 15, 0.6);
-    border-radius: 40px;
-    box-shadow: 0 2px 2px transparent;
-    border: 1px solid transparent;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+.header-bar {
+  background-color: var(--color-bg-1);
+  box-shadow: 0 2px 2px transparent;
+  border-bottom: 1px solid var(--color-accent);
+  box-shadow: 4px 4px 5px var(--color-shadow);
+  padding: 8px;
+  padding-left: 20px;
+  padding-right: 20px;
+  justify-content: space-between;
 }
-#button:hover {
-    transition: all 0.2s ease-in-out;
-    background-color: rgba(15, 15, 15, 0.3);
+
+.header-btns {
+  gap: 10px;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.header-btn {
+  border-radius: 20px;
+  gap: 5px;
+  padding: 10px;
+  padding-left: 15px;
+  padding-right: 15px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.header-btn:hover {
+  background-color: var(--color-hover);
+  border: 1px solid var(--color-accent);
+}
+
+img {
+  width: 50px;
+  height: 50px;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+p {
+  font-size: 1.1em;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  user-select: none;
 }
 </style>

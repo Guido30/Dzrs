@@ -3,7 +3,6 @@ import { ref, reactive, computed } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
 import { IconSearch, IconFolder, IconTrash } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
-import HeaderBar from "../components/HeaderBar.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
 const slavartItems = ref([]);
@@ -40,7 +39,6 @@ function removeInfoItem(id) {
 
 <template>
   <div class="container">
-    <HeaderBar :title="'Download'" />
     <div class="row">
       <IconSearch size="30" style="display: block; margin: auto" />
       <input placeholder="Song name..." @keypress.enter="handleInput" />
@@ -88,8 +86,8 @@ function removeInfoItem(id) {
 .items-header {
   display: flex;
   flex-direction: row;
-  background-color: #1c1c1c;
-  border-bottom: 1px solid #2f2f2f;
+  background-color: var(--color-bg-1);
+  border-bottom: 1px solid var(--color-bg-2);
   max-height: 30px;
   position: sticky;
   top: 0;
@@ -114,10 +112,10 @@ function removeInfoItem(id) {
   margin-top: auto;
   justify-content: flex-end;
   padding: 5px;
-  border-top: 1px solid #2f2f2f;
+  border-top: 1px solid var(--color-bg-2);
   position: sticky;
   bottom: 0px;
-  background-color: #1c1c1c;
+  background-color: var(--color-bg-1);
 }
 
 input {

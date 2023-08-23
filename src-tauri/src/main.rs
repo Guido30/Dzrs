@@ -123,49 +123,6 @@ fn main() {
     };
 
     tauri::Builder::default()
-        .setup(|app| {
-            let menu = helpers::build_menubar();
-            let main_win = WindowBuilder::new(
-                app,
-                "main".to_string(),
-                tauri::WindowUrl::App("".into()),
-            )
-            .menu(menu)
-            .inner_size(1200.0, 1000.0)
-            .min_inner_size(700.0, 600.0)
-            .fullscreen(false)
-            .resizable(true)
-            .title("Dzrs")
-            .build()?;
-
-            let main_win_ = main_win.clone();
-            main_win.on_menu_event(move |e| match e.menu_item_id() {
-                "open_folder" => {
-                    let _ = main_win_.emit("page-change", "/");
-                    let file_dialog = helpers::build_file_dialog();
-                    let folder = file_dialog.pick_folder();
-                    println!("{:?}", folder);
-                }
-                "open_files" => {
-                    let _ = main_win_.emit("page-change", "/");
-                    let file_dialog = helpers::build_file_dialog();
-                    let files = file_dialog.pick_files();
-                    println!("{:?}", files);
-                }
-                "download" => {
-                    let _ = main_win_.emit("page-change", "download");
-                }
-                "options" => {
-                    let _ = main_win_.emit("page-change", "settings");
-                }
-                "about" => {
-                    let _ = main_win_.emit("page-change", "about");
-                }
-                _ => (),
-            });
-
-            Ok(())
-        })
         .manage(Mutex::new(configuration))
         .invoke_handler(tauri::generate_handler![
             get_config_values,

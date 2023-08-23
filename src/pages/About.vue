@@ -8,15 +8,15 @@ import { IconBrandGithub } from "@tabler/icons-vue";
       <div class="column">
         <div class="row">
           <img src="../assets/logox256.png" style="margin-right: 20px; user-select: none;">
-          <div class="column" style="padding-left: 40px; text-align: left; border-left: 1px solid #a0a0a0;">
-            <h1 class="text">Dzrs</h1>
-            <p class="text" style="margin-top: 0px;">Made by Guido30</p>
+          <div class="column" style="padding-left: 40px; text-align: left; border-left: 1px solid var(--color-text);">
+            <h1 >Dzrs</h1>
+            <p style="margin-top: 0px;">Made by Guido30</p>
           </div>
         </div>
         <div class="column" style="align-items: start; padding-left: 40px;">
-          <a href="https://github.com/Guido30/Dzrs.git" target="_blank" class="button">
+          <a href="https://github.com/Guido30/Dzrs.git" target="_blank">
             <div class="row">
-              <IconBrandGithub class="icon" size="40" color="#a0a0a0"/>
+              <IconBrandGithub class="icon" size="40" color="var(--color-text)"/>
               <p style="padding-left: 10px; user-select: none;">Github</p>
             </div>
           </a>
@@ -31,11 +31,7 @@ import { IconBrandGithub } from "@tabler/icons-vue";
   margin: auto;
   padding: 10%;
   border-radius: 50px;
-  box-shadow: 5px 8px 10px #0000008a;
-}
-
-.text {
-  color: #a0a0a0;
+  box-shadow: 5px 8px 10px var(--color-shadow);
 }
 
 h1 {
@@ -44,8 +40,15 @@ h1 {
 
 a {
   font-size: 1.4em;
-  color: #a0a0a0;
+  color: var(--color-text);
   text-decoration: none;
   border-radius: 30px;
+  padding-left: 20px;
+  padding-right: 20px;
+  transition: background-color 0.2s ease;
+}
+
+a:hover {
+  background-color: var(--color-bg-2);
 }
 </style>

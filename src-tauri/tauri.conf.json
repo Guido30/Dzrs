@@ -11,6 +11,17 @@
     "version": "0.0.1"
   },
   "tauri": {
+    "windows": [
+      {
+        "label": "main",
+        "center": true,
+        "width": 1200,
+        "height": 1000,
+        "minWidth": 700,
+        "minHeight": 600,
+        "title": "Dzrs"
+      }
+    ],
     "allowlist": {
       "all": false,
       "shell": {
@@ -35,7 +46,6 @@
     },
     "security": {
       "csp": null
-    },
-    "windows": []
+    }
   }
 }

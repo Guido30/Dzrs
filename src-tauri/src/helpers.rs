@@ -47,38 +47,3 @@ pub fn build_file_dialog() -> FileDialogBuilder {
 
     file_dialog
 }
-
-pub fn build_menubar() -> Menu {
-    Menu::new()
-        .add_submenu(Submenu::new(
-            "File",
-            Menu::new()
-                .add_item(
-                    CustomMenuItem::new("open_folder", "Open Folder")
-                        .accelerator("O"),
-                )
-                .add_item(
-                    CustomMenuItem::new("open_files", "Open Files")
-                        .accelerator("F"),
-                )
-                .add_item(
-                    CustomMenuItem::new("download", "Download")
-                        .accelerator("D"),
-                ),
-        ))
-        .add_submenu(Submenu::new(
-            "Edit",
-            Menu::new()
-                .add_native_item(MenuItem::Copy)
-                .add_native_item(MenuItem::Cut)
-                .add_native_item(MenuItem::Paste),
-        ))
-        .add_submenu(Submenu::new(
-            "Options",
-            Menu::new().add_item(CustomMenuItem::new("options", "Options")),
-        ))
-        .add_submenu(Submenu::new(
-            "Help",
-            Menu::new().add_item(CustomMenuItem::new("about", "About")),
-        ))
-}

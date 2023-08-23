@@ -4,7 +4,6 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { downloadDir } from "@tauri-apps/api/path";
 import { IconFolder } from "@tabler/icons-vue";
-import HeaderBar from "../components/HeaderBar.vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
 const downloadInputValue = ref(inject("appConfig").download_path);
@@ -22,7 +21,6 @@ async function setDownloadPath() {
 
 <template>
   <div class="container">
-    <HeaderBar :title="'Settings'" />
     <div class="column">
       <SettingsGroup>
         <template #head>
@@ -31,8 +29,8 @@ async function setDownloadPath() {
         </template>
         <template #body>
           <input :value="downloadInputValue" type="text" placeholder="Open..." style="flex-grow: 1;">
-          <button style="margin-left: 5px;" @click="setDownloadPath">
-            <IconFolder/>
+          <button style="margin-left: 15px;" @click="setDownloadPath">
+            <IconFolder color="var(--color-text)"/>
           </button>
         </template>
       </SettingsGroup>

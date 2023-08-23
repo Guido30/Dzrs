@@ -46,7 +46,7 @@ function emitDownloadRequested() {
 
 .item-data:hover {
   transition: background-color 0.2s ease-in-out;
-  background-color: #0f0f0f99;
+  background-color: var(--color-hover);
 }
 
 .img-container {

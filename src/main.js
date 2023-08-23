@@ -1,15 +1,13 @@
 import { createApp } from "vue";
-import { appWindow } from "@tauri-apps/api/window";
-import router from "./router";
-import appConfig from "./appConfig";
-import "./styles.css";
+import { invoke } from "@tauri-apps/api/tauri";
 import App from "./App.vue";
+
+const response = await invoke("get_config_values")
+  .then((res) => res)
+  .catch((_) => "");
+
+const appConfig = JSON.parse(response);
 
 const app = createApp(App);
 app.provide("appConfig", appConfig);
-app.use(router);
 app.mount("#app");
-
-appWindow.listen("page-change", (event) =>
-  router.push({ path: event.payload })
-);

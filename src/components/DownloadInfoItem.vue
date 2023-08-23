@@ -35,7 +35,7 @@ function emitRemoveRequested() {
   padding-top: 10px;
   padding-left: 2px;
   padding-bottom: 5px;
-  border-bottom: 1px solid #2f2f2f;
+  border-bottom: 1px solid var(--color-bg-2);
 }
 
 p {
