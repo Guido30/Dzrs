@@ -2,7 +2,7 @@
 import { reactive } from "vue";
 import { IconDownload } from "@tabler/icons-vue";
 
-const prop = defineProps(["item-data"]);
+const prop = defineProps(["item-data", "columns"]);
 const emit = defineEmits(["downloadRequested"])
 
 const data = reactive({ ...prop.itemData });
@@ -31,10 +31,17 @@ function emitDownloadRequested() {
         <img :src="prop.itemData.thumbnail">
       </div>
     </td>
-    <td class="text-pad">{{ prop.itemData.title }}</td>
-    <td class="text-pad">{{ prop.itemData.album_title }}</td>
-    <td class="text-pad">{{ prop.itemData.performer_name }}</td>
-    <td>{{ Math.floor(prop.itemData.duration / 60) }}:{{ (prop.itemData.duration % 60).toString().padStart(2, "0") }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'title').enabled" class="text-pad">{{ prop.itemData.title }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'album').enabled" class="text-pad">{{ prop.itemData.album_title }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'artist').enabled" class="text-pad">{{ prop.itemData.artist }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'genre').enabled" class="text-pad">{{ prop.itemData.genre }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'duration').enabled">{{ Math.floor(prop.itemData.duration / 60) }}:{{ (prop.itemData.duration % 60).toString().padStart(2, "0") }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'date').enabled" class="text-pad">{{ prop.itemData.date }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'composer').enabled" class="text-pad">{{ prop.itemData.composer }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'isrc').enabled" class="text-pad">{{ prop.itemData.isrc }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'copyright').enabled" class="text-pad">{{ prop.itemData.copyright }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'bitDepth').enabled">{{ prop.itemData.bit_depth }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'samplingRate').enabled">{{ prop.itemData.sampling_rate }} kHz</td>
   </tr>
 </template>
 
@@ -92,8 +99,8 @@ td::-webkit-scrollbar {
 .icon-download {
   opacity: 0%;
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 28px;
+  left: 26px;
   transform: translate(-50%, -50%);
   z-index: 1;
 }

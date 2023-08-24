@@ -19,9 +19,7 @@ use tauri::api::dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri::{State, Window};
 
 #[tauri::command]
-async fn get_slavart_tracks(
-    query: String,
-) -> Result<SlavartDownloadItems, String> {
+async fn get_slavart_tracks(query: String) -> Result<SlavartDownloadItems, String> {
     let response = reqwest::get(format!(
         "https://slavart.gamesdrive.net/api/search?q={query}"
     ))
@@ -54,15 +52,10 @@ async fn download_track(
     filename: String,
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<(), String> {
-    let url = format!(
-        "https://slavart-api.gamesdrive.net/api/download/track?id={id}"
-    );
-    let file_path =
-        PathBuf::from(configuration.lock().unwrap().download_path.clone())
-            .join(format!("{}.flac", filename));
-    if file_path.exists()
-        && (configuration.lock().unwrap().overwrite_downloads == "false")
-    {
+    let url = format!("https://slavart-api.gamesdrive.net/api/download/track?id={id}");
+    let file_path = PathBuf::from(configuration.lock().unwrap().download_path.clone())
+        .join(format!("{}.flac", filename));
+    if file_path.exists() && (configuration.lock().unwrap().overwrite_downloads == "false") {
         println!("{:?}", configuration.lock().unwrap().overwrite_downloads);
         return Err(format!("File {} already exists", filename));
     }

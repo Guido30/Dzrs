@@ -17,7 +17,7 @@ function emitRemoveRequested() {
         <p>{{ prop.itemData.title }}</p>
         <p>{{ prop.itemData.album_title }}</p>
         <div class="row">
-            <p style="flex-grow: 1;">{{ prop.itemData.performer_name }}</p>
+            <p style="flex-grow: 1;">{{ prop.itemData.artist }}</p>
             <IconTrash class="icon icon-trash" style="cursor: pointer; margin-left: 5px;" @click="emitRemoveRequested" />
             <IconLoader2 class="icon icon-loading" v-if="false"/>
             <IconCircleCheck class="icon" v-else-if="true"/>

@@ -7,7 +7,7 @@ import { writeText } from '@tauri-apps/api/clipboard';
 import { IconFolder, IconTextSize, IconCheck } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
-import { appConfig } from "../helpers";
+import { appConfig, filterColumns } from "../helpers";
 
 const downloadInputValue = ref(appConfig.download_path);
 const fileTemplateInput = ref(null);
@@ -33,7 +33,6 @@ async function saveFileTemplate() {
 async function saveOverwriteDownloads() {
   const value = new String(overwriteDownloadsInput.value.checked)
   await invoke("update_config", { key: "overwrite_downloads", value: value })
-  appConfig.overwrite_downloads = value
 }
 
 async function copyEventTargetToClipboard(event) {
@@ -72,14 +71,14 @@ async function copyEventTargetToClipboard(event) {
         <template #body>
           <p style="font-size: 1.0em;">Downloaded files will be saved with the following name</p>
           <div class="row">
-            <input style="flex-grow: 1;" type="text" placeholder="File name template..." :value="fileTemplateValue" ref="fileTemplateInput">
+            <input style="flex-grow: 1;" type="text" spellcheck="false" placeholder="File name template..." :value="fileTemplateValue" ref="fileTemplateInput">
             <button @click.prevent="saveFileTemplate" style="margin-left: 10px;">
               <IconCheck color="var(--color-text)"/>
             </button>
           </div>
-          <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start;">
+          <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start; flex-wrap: wrap;">
             <p>Available Variables:</p>
-            <p v-for="item in appConfig.fileTemplateVars" :key="item.id" @click="copyEventTargetToClipboard">{{ item }}</p>
+            <p v-for="item in filterColumns" :key="item.id" @click="copyEventTargetToClipboard">{{ `%${item.key}%` }}</p>
           </div>
         </template>
       </SettingsGroup>

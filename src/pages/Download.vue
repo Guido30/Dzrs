@@ -5,21 +5,14 @@ import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, 
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
-import { appConfig, parseFileName, openFileBrowser } from "../helpers";
+import { appConfig, parseFileName, openFileBrowser, filterColumns } from "../helpers";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
 const inputElement = ref(null);
 const isDownloadExpanded = ref(false);
-
-let showFilterMenu = ref(false);
-const filterColumns = reactive([
-  { key: 'title', label: 'Title' },
-  { key: 'album', label: 'Album' },
-  { key: 'artist', label: 'Artist' },
-  { key: 'duration', label: 'Duration' },
-]);
-const selectedFilterColumns = ref(['title', 'album', 'artist', 'duration']);
+const showFilterMenu = ref(false);
+// const filterColumns = reactive(fC);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -48,12 +41,17 @@ async function downloadTrack(item) {
 };
 
 function removeInfoItem(id) {
-  infoItemsIds.value = id
+  infoItemsIds.value = id;
+}
+
+async function saveFilterColumn(filterColumn) {
+  await invoke("update_config", { key: filterColumn.config, value: `${filterColumn.enabled}` })
+    .then((_) => "")
+    .catch((err) => console.log(err));
 }
 
 onMounted(() => {
   document.addEventListener('click', (event) => {
-    console.log(event.target);
     if (!event.target.closest('.table-filter-btn')) {
       showFilterMenu.value = false;
     }
@@ -63,9 +61,9 @@ onMounted(() => {
 
 <template>
   <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw;">
-    <div class="column" style="flex-grow: 1; gap: 15px;">
+    <div class="column" style="flex-grow: 1; gap: 15px; overflow-y: scroll;">
       <div class="row" style="flex-basis: 50px;">
-        <input placeholder="Song name..." @keypress.enter="searchTracks" ref="inputElement"/>
+        <input placeholder="Song name..." spellcheck="false" @keypress.enter="searchTracks" ref="inputElement"/>
         <button style="margin-left: 10px;" @click="searchTracks()">
             <IconSearch size="20" color="var(--color-text)" class="icon"/>
         </button>
@@ -80,32 +78,29 @@ onMounted(() => {
             <thead class="table-header">
               <tr>
                 <th style="width: 20px; position: relative;">
-                  <IconDotsVertical size="18" class="icon table-filter-btn" @click="showFilterMenu = true"/>
+                  <IconDotsVertical size="18" class="icon table-filter-btn" @click="showFilterMenu = !showFilterMenu"/>
                   <div class="filter-menu" v-if="showFilterMenu" @click.stop>
                     <div class="filter-menu-arrow"></div>
                     <div v-for="column in filterColumns" :key="column.key">
                       <label>
-                        <input class="filterItemInput" type="checkbox" v-model="selectedFilterColumns" :value="column.key" />
+                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled"/>
                         {{ column.label }}
                       </label>
                     </div>
                   </div>
                 </th>
                 <th><!-- Reserved for image --></th>
-                <th>Title</th>
-                <th>Album</th>
-                <th>Artist</th>
-                <th>Duration</th>
+                <th v-for="column in filterColumns" :key="column.key" v-show="column.enabled">{{ column.label }}</th>
               </tr>
             </thead>
             <tbody>
-              <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
+              <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumns" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
             </tbody>
           </table>
         </div>
       </div>
     </div>
-    <div class="frame info-items" :class="{ 'expanded': isDownloadExpanded}">
+    <div class="frame info-items" :class="{ 'expanded': isDownloadExpanded }">
         <div class="table-header">
           <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Downloads</p>
         </div>
@@ -141,6 +136,7 @@ onMounted(() => {
 .table-header th {
   font-weight: 500;
   border-bottom: 1px solid var(--color-bg-2);
+  text-wrap: nowrap;
 }
 
 .items-header > p {
@@ -180,6 +176,10 @@ table {
   border-spacing: 0px 4px;
 }
 
+tbody {
+  font-size: 0.95em;
+}
+
 .table-filter-btn {
   margin-top: 4px;
   padding: 2px;
@@ -211,6 +211,7 @@ table {
   border: 1px solid var(--color-accent);
   border-radius: 10px;
   border-top-left-radius: 4px;
+  z-index: 2;
 }
 
 .filter-menu-arrow {

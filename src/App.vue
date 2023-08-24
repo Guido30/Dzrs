@@ -134,18 +134,10 @@ button,
 }
 
 .checkbox {
-    height: 20px;
-    width: 20px;
-    appearance: none;
-    background-color: var(--color-bg-1);
-    border: 1px solid var(--color-accent);
-    box-shadow: 1px 1px 3px var(--color-shadow);
-    border-radius: 3px;
-    display: inline-block;
-    padding: 9px;
-    position: relative;
     margin-top: auto;
     margin-bottom: auto;
+    width: 20px;
+    height: 20px;
 }
 
 .checkbox:checked {
