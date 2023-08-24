@@ -133,6 +133,25 @@ button,
     box-shadow: 0 2px 2px var(--color-shadow);
 }
 
+.checkbox {
+    height: 20px;
+    width: 20px;
+    appearance: none;
+    background-color: var(--color-bg-1);
+    border: 1px solid var(--color-accent);
+    box-shadow: 1px 1px 3px var(--color-shadow);
+    border-radius: 3px;
+    display: inline-block;
+    padding: 9px;
+    position: relative;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.checkbox:checked {
+	background-color: var(--color-accent);
+}
+
 input:focus {
     outline: none !important;
     border: 1px solid var(--color-accent);

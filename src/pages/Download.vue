@@ -1,16 +1,16 @@
 <script setup>
-import { ref, computed, inject } from "vue";
+import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
 import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconArrowBarRight } from "@tabler/icons-vue";
-import { parseFileName } from "../helpers";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
+
+import { appConfig, parseFileName, openFileBrowser } from "../helpers";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
 const inputElement = ref(null);
 const isDownloadExpanded = ref(false);
-const fileTemplate = ref(inject("appConfig").file_template);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -22,8 +22,8 @@ const infoItemsIds = computed({
   }
 });
 
-async function handleInput() {
-  await invoke("get_slavart_tracks", { query: `${inputElement.value}` })
+async function searchTracks() {
+  await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
     .then((result) => {slavartItems.value = result.items})
     .catch((err) => console.log("ERR", err));
 }
@@ -32,7 +32,7 @@ async function downloadTrack(item) {
   if (!infoItemsIds.value.includes(item.id)) {
     infoItems.value.push(item)
   };
-  const fileName = parseFileName(item, fileTemplate.value);
+  const fileName = parseFileName(item, appConfig.file_template);
   const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName }).then((res) => true).catch((err) => {false; console.log(err);});
 };
 
@@ -45,8 +45,8 @@ function removeInfoItem(id) {
   <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw;">
     <div class="column" style="flex-grow: 1; gap: 15px;">
       <div class="row" style="flex-basis: 50px;">
-        <input placeholder="Song name..." @keypress.enter="handleInput" :ref="inputElement"/>
-        <button style="margin-left: 10px;" @click="handleInput()">
+        <input placeholder="Song name..." @keypress.enter="searchTracks" ref="inputElement"/>
+        <button style="margin-left: 10px;" @click="searchTracks()">
             <IconSearch size="20" color="var(--color-text)" class="icon"/>
         </button>
         <button style="margin-left: 10px;" @click="isDownloadExpanded = !isDownloadExpanded">
@@ -84,7 +84,7 @@ function removeInfoItem(id) {
           <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
         </div>
         <div class="row downloads-btns">
-            <IconFolder size="30" class="icon"/>
+            <IconFolder @click="openFileBrowser(appConfig.download_path)" size="30" style="cursor: pointer;" class="icon"/>
             <IconTrash @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
         </div>
       </div>

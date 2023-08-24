@@ -30,7 +30,12 @@
         "open": true
       },
       "dialog": {
-        "open": true
+        "all": true,
+        "ask": true,
+        "confirm": true,
+        "message": true,
+        "open": true,
+        "save": true
       },
       "clipboard": {
         "all": true,

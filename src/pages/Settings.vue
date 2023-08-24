@@ -1,28 +1,31 @@
 <script setup>
-import { inject, ref } from "vue";
+import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
-import { open } from "@tauri-apps/api/dialog";
+import { open, message } from "@tauri-apps/api/dialog";
 import { downloadDir } from "@tauri-apps/api/path";
 import { writeText } from '@tauri-apps/api/clipboard';
 import { IconFolder, IconTextSize, IconCheck } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
-const fileTemplateInput = ref(null);
-const fileTemplateValue = ref(inject("appConfig").file_template);
+import { appConfig } from "../helpers";
 
-const downloadInputValue = ref(inject("appConfig").download_path);
+const downloadInputValue = ref(appConfig.download_path);
+const fileTemplateInput = ref(null);
+const fileTemplateValue = ref(appConfig.file_template);
 
 async function setDownloadPath() {
   const defaultPath = await downloadDir().then((result) => result).catch((_) => "");
   const path = await open({ defaultPath: defaultPath, directory: true, multiple: false}).then((result) => result).catch((_) => ""); 
   if (path !== null) {
-    downloadInputValue.value = path;
     await invoke("update_config", { key: "download_path", value: path })
+    appConfig.download_path = path;
+    downloadInputValue.value = path;
   };
 };
 
 async function saveFileTemplate() {
   await invoke("update_config", { key: "file_template", value: fileTemplateInput.value.value })
+  appConfig.file_template = fileTemplateInput.value.value
 }
 
 async function copyEventTargetToClipboard(event) {
@@ -34,16 +37,23 @@ async function copyEventTargetToClipboard(event) {
 <template>
   <div class="container">
     <div class="column">
-      <SettingsGroup>
+      <SettingsGroup :body-as-column="true" class="group-download">
         <template #head>
           <IconFolder size="30" class="icon setting-icon"/>
-          <h1>Download Path</h1>
+          <h1>Download</h1>
         </template>
         <template #body>
-          <input :value="downloadInputValue" type="text" placeholder="Open..." style="flex-grow: 1;">
-          <button style="margin-left: 15px;" @click="setDownloadPath">
-            <IconFolder color="var(--color-text)"/>
-          </button>
+          <p>Download Path</p>
+          <div class="row">
+            <input :value="downloadInputValue" type="text" placeholder="Open..." style="flex-grow: 1;">
+            <button style="margin-left: 15px;" @click="setDownloadPath">
+              <IconFolder color="var(--color-text)"/>
+            </button>
+          </div>
+          <div class="row" style="justify-content: flex-start; padding-top: 20px;">
+            <p style="margin-right: 5px;">Overwrite existing files</p>
+            <input type="checkbox" class="checkbox">
+          </div>
         </template>
       </SettingsGroup>
       <SettingsGroup :body-as-column="true" class="group-file-template">
@@ -61,7 +71,7 @@ async function copyEventTargetToClipboard(event) {
           </div>
           <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start;">
             <p>Available Variables:</p>
-            <p v-for="item in inject('appConfig').fileTemplateVars" :key="item.id" @click="copyEventTargetToClipboard">{{ item }}</p>
+            <p v-for="item in appConfig.fileTemplateVars" :key="item.id" @click="copyEventTargetToClipboard">{{ item }}</p>
           </div>
         </template>
       </SettingsGroup>
@@ -82,6 +92,10 @@ h1 {
   margin-bottom: auto;
   text-align: center;
   user-select: none;
+}
+
+.group-download p {
+  text-align: left;
 }
 
 .group-file-template p {

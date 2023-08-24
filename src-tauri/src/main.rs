@@ -104,14 +104,24 @@ async fn update_config(
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<(), String> {
     configuration.lock().unwrap().update(key, value);
-    let _ = configuration.lock().unwrap().save();
-    Ok(())
+    match configuration.lock().unwrap().save() {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
 }
 
 #[tauri::command]
 async fn show_window(window: Window) -> Result<(), String> {
     match window.show() {
         Ok(()) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
+#[tauri::command]
+async fn open_explorer(path: String) -> Result<(), String> {
+    match helpers::open_explorer(path) {
+        Ok(_) => Ok(()),
         Err(err) => Err(err.to_string()),
     }
 }
@@ -135,6 +145,7 @@ fn main() {
             get_config_values,
             get_config,
             update_config,
+            open_explorer,
             get_slavart_tracks,
             download_track,
         ])

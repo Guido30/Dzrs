@@ -1,11 +1,13 @@
 use std::env;
+use std::env::consts::OS;
 use std::path::PathBuf;
+use std::process::Command;
 use tauri::api::dialog::blocking::FileDialogBuilder;
 use tauri::{CustomMenuItem, Menu, MenuItem, Submenu};
 
 pub fn app_data_dir() -> PathBuf {
     let mut path = PathBuf::new();
-    let os = std::env::consts::OS;
+    let os = OS;
     match os {
         "linux" => {
             if let Ok(xdg_data_home) = env::var("XDG_DATA_HOME") {
@@ -46,4 +48,18 @@ pub fn build_file_dialog() -> FileDialogBuilder {
         .set_directory(dialog_path);
 
     file_dialog
+}
+
+pub fn open_explorer(path: String) -> Result<(), String> {
+    let path: PathBuf = path.into();
+    let program: String = match OS {
+        "linux" => "xdg-open".into(),
+        "macos" => "open".into(),
+        "windows" => "explorer".into(),
+        _ => "".into(),
+    };
+    match Command::new(program).arg(path).spawn() {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
 }

@@ -10,6 +10,7 @@ pub struct DzrsConfiguration {
     _path: PathBuf,
     pub download_path: String,
     pub file_template: String,
+    pub overwrite_downloads: String,
 }
 
 impl DzrsConfiguration {
@@ -48,6 +49,7 @@ impl DzrsConfiguration {
         match field.as_str() {
             "download_path" => self.download_path = value,
             "file_template" => self.file_template = value,
+            "overwrite_downloads" => self.overwrite_downloads = value,
             _ => (),
         }
     }
@@ -66,6 +68,7 @@ impl Default for DzrsConfiguration {
             _path: PathBuf::new(),
             download_path: "".into(),
             file_template: "%title% - %album%".into(),
+            overwrite_downloads: "true".into(),
         }
     }
 }
