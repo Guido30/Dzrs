@@ -12,6 +12,8 @@ import { appConfig } from "../helpers";
 const downloadInputValue = ref(appConfig.download_path);
 const fileTemplateInput = ref(null);
 const fileTemplateValue = ref(appConfig.file_template);
+const overwriteDownloadsInput = ref(null);
+const overwriteDownloadsValue = ref(appConfig.overwrite_downloads);
 
 async function setDownloadPath() {
   const defaultPath = await downloadDir().then((result) => result).catch((_) => "");
@@ -26,6 +28,12 @@ async function setDownloadPath() {
 async function saveFileTemplate() {
   await invoke("update_config", { key: "file_template", value: fileTemplateInput.value.value })
   appConfig.file_template = fileTemplateInput.value.value
+}
+
+async function saveOverwriteDownloads() {
+  const value = new String(overwriteDownloadsInput.value.checked)
+  await invoke("update_config", { key: "overwrite_downloads", value: value })
+  appConfig.overwrite_downloads = value
 }
 
 async function copyEventTargetToClipboard(event) {
@@ -52,7 +60,7 @@ async function copyEventTargetToClipboard(event) {
           </div>
           <div class="row" style="justify-content: flex-start; padding-top: 20px;">
             <p style="margin-right: 5px;">Overwrite existing files</p>
-            <input type="checkbox" class="checkbox">
+            <input @change="saveOverwriteDownloads" type="checkbox" class="checkbox" ref="overwriteDownloadsInput" :checked="overwriteDownloadsValue">
           </div>
         </template>
       </SettingsGroup>

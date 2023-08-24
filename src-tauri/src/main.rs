@@ -57,13 +57,19 @@ async fn download_track(
     let url = format!(
         "https://slavart-api.gamesdrive.net/api/download/track?id={id}"
     );
+    let file_path =
+        PathBuf::from(configuration.lock().unwrap().download_path.clone())
+            .join(format!("{}.flac", filename));
+    if file_path.exists()
+        && (configuration.lock().unwrap().overwrite_downloads == "false")
+    {
+        println!("{:?}", configuration.lock().unwrap().overwrite_downloads);
+        return Err(format!("File {} already exists", filename));
+    }
     let response = match reqwest::get(&url).await {
         Ok(res) => res,
         Err(err) => return Err(err.to_string()),
     };
-    let file_path =
-        PathBuf::from(configuration.lock().unwrap().download_path.clone())
-            .join(format!("{}.flac", filename));
     let mut file = match File::create(file_path) {
         Ok(file) => file,
         Err(err) => return Err(err.to_string()),

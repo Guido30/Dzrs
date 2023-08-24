@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
 import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconArrowBarRight } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
@@ -11,6 +11,15 @@ const slavartItems = ref([]);
 const infoItems = ref([]);
 const inputElement = ref(null);
 const isDownloadExpanded = ref(false);
+
+let showFilterMenu = ref(false);
+const filterColumns = reactive([
+  { key: 'title', label: 'Title' },
+  { key: 'album', label: 'Album' },
+  { key: 'artist', label: 'Artist' },
+  { key: 'duration', label: 'Duration' },
+]);
+const selectedFilterColumns = ref(['title', 'album', 'artist', 'duration']);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -25,20 +34,31 @@ const infoItemsIds = computed({
 async function searchTracks() {
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
     .then((result) => {slavartItems.value = result.items})
-    .catch((err) => console.log("ERR", err));
+    .catch((err) => console.error("ERR", err));
 }
 
 async function downloadTrack(item) {
   if (!infoItemsIds.value.includes(item.id)) {
-    infoItems.value.push(item)
+    infoItems.value.push(item);
+    const fileName = parseFileName(item, appConfig.file_template);
+    const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName }).then((res) => true).catch((err) => console.error(err));
+  } else {
+    console.error("Already in queue");
   };
-  const fileName = parseFileName(item, appConfig.file_template);
-  const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName }).then((res) => true).catch((err) => {false; console.log(err);});
 };
 
 function removeInfoItem(id) {
   infoItemsIds.value = id
 }
+
+onMounted(() => {
+  document.addEventListener('click', (event) => {
+    console.log(event.target);
+    if (!event.target.closest('.table-filter-btn')) {
+      showFilterMenu.value = false;
+    }
+  });
+});
 </script>
 
 <template>
@@ -59,8 +79,17 @@ function removeInfoItem(id) {
           <table>
             <thead class="table-header">
               <tr>
-                <th style="width: 2%;">
-                  <IconDotsVertical size="18" class="icon table-filter-btn"/>
+                <th style="width: 20px; position: relative;">
+                  <IconDotsVertical size="18" class="icon table-filter-btn" @click="showFilterMenu = true"/>
+                  <div class="filter-menu" v-if="showFilterMenu" @click.stop>
+                    <div class="filter-menu-arrow"></div>
+                    <div v-for="column in filterColumns" :key="column.key">
+                      <label>
+                        <input class="filterItemInput" type="checkbox" v-model="selectedFilterColumns" :value="column.key" />
+                        {{ column.label }}
+                      </label>
+                    </div>
+                  </div>
                 </th>
                 <th><!-- Reserved for image --></th>
                 <th>Title</th>
@@ -168,5 +197,38 @@ table {
 .expanded {
   display: flex;
   width: 200px;
+}
+
+.filter-menu {
+  position: absolute;
+  min-width: max-content;
+  text-align: left;
+  margin-top: 8px;
+  padding: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--color-accent);
+  border-radius: 10px;
+  border-top-left-radius: 4px;
+}
+
+.filter-menu-arrow {
+  width: 0; 
+  height: 0; 
+  border-top: 0px solid transparent; 
+  border-bottom: 15px solid var(--color-accent); /* 40px height (20+20) */
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  position: absolute;
+  top: -15px;
+  left: 1px;
+}
+
+.filter-menu label {
+  color: var(--color-text);
+  font-size: 1em;
+  font-weight: 400;
+  user-select: none;
 }
 </style>
