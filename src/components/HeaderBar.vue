@@ -1,14 +1,22 @@
 <script setup>
 import { ref } from "vue";
 import { appWindow } from "@tauri-apps/api/window";
-import Notifications from "./Notifications.vue";
+import { IconLayoutList } from "@tabler/icons-vue";
+
+const emit = defineEmits(["showNotifications"]);
 
 const activeButton = ref("Main");
+const showNotifications = ref(false);
 
 function emitPageChange(page) {
   activeButton.value = page;
   appWindow.emit('page-change', page);
 }
+
+function emitShowNotifications() {
+    showNotifications.value = !showNotifications.value;
+    emit("showNotifications", showNotifications.value);
+};
 
 </script>
 
@@ -28,8 +36,8 @@ function emitPageChange(page) {
         <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About'}">
           <p>About</p>
         </div>
-        <div class="row header-btn" @click="">
-          <Notifications/>
+        <div class="row header-btn" @click="emitShowNotifications">
+          <IconLayoutList class="icon"/>
         </div>
     </div>
   </div>

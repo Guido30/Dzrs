@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { reactive } from "vue";
+import mitt from "mitt";
 
 export function parseFileName(fileData, template) {
   const fileName = template
@@ -104,5 +105,6 @@ export const filterColumns = reactive([
 ]);
 
 export const appConfig = config;
+export const globalEmitter = mitt();
 
 export default {};

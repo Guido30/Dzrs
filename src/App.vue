@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, shallowRef } from 'vue';
+import { onMounted, shallowRef, ref } from 'vue';
 import { invoke } from '@tauri-apps/api';
 import { appWindow } from "@tauri-apps/api/window";
 import Main from './pages/Main.vue';
@@ -7,8 +7,10 @@ import Download from './pages/Download.vue';
 import Settings from './pages/Settings.vue';
 import About from './pages/About.vue';
 import HeaderBar from './components/HeaderBar.vue';
+import Notifications from './components/Notifications.vue';
 
 const activePage = shallowRef(Main);
+const showNotifications = ref(false);
 
 appWindow.listen("page-change", (event) => {
     switch (event.payload) {
@@ -33,10 +35,11 @@ onMounted(async () => {
 
 <template>
     <div class="container" style="height: 100vh; padding: 0px;">
-        <HeaderBar />
+        <HeaderBar @showNotifications="(res) => showNotifications = res" />
         <keep-alive>
             <component :is="activePage" />
         </keep-alive>
+        <Notifications v-show="showNotifications"/>
     </div>
 </template>
 

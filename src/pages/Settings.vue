@@ -1,13 +1,13 @@
 <script setup>
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
-import { open, message } from "@tauri-apps/api/dialog";
+import { open } from "@tauri-apps/api/dialog";
 import { downloadDir } from "@tauri-apps/api/path";
 import { writeText } from '@tauri-apps/api/clipboard';
 import { IconFolder, IconTextSize, IconCheck } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
-import { appConfig, filterColumns } from "../helpers";
+import { appConfig, filterColumns, globalEmitter } from "../helpers";
 
 const downloadInputValue = ref(appConfig.download_path);
 const fileTemplateInput = ref(null);
@@ -16,10 +16,16 @@ const overwriteDownloadsInput = ref(null);
 const overwriteDownloadsValue = ref(appConfig.overwrite_downloads);
 
 async function setDownloadPath() {
-  const defaultPath = await downloadDir().then((result) => result).catch((_) => "");
-  const path = await open({ defaultPath: defaultPath, directory: true, multiple: false}).then((result) => result).catch((_) => ""); 
+  const defaultPath = await downloadDir()
+    .then((result) => result)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
+  const path = await open({ defaultPath: defaultPath, directory: true, multiple: false})
+    .then((result) => result)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err })); 
   if (path !== null) {
     await invoke("update_config", { key: "download_path", value: path })
+      .then((_) => "")
+      .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
     appConfig.download_path = path;
     downloadInputValue.value = path;
   };
@@ -27,16 +33,22 @@ async function setDownloadPath() {
 
 async function saveFileTemplate() {
   await invoke("update_config", { key: "file_template", value: fileTemplateInput.value.value })
+    .then((_) => "")
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFileTemplate", msg: err }));
   appConfig.file_template = fileTemplateInput.value.value
 }
 
 async function saveOverwriteDownloads() {
   const value = new String(overwriteDownloadsInput.value.checked)
   await invoke("update_config", { key: "overwrite_downloads", value: value })
+    .then((_) => "")
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveOverwriteDownloads", msg: err }));
 }
 
 async function copyEventTargetToClipboard(event) {
-  await writeText(event.target.innerHTML);
+  await writeText(event.target.innerHTML)
+    .then((_) => "")
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "copyEventTargetToClipboard", msg: err }));
 };
 
 </script>

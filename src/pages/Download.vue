@@ -1,18 +1,17 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
-import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconArrowBarRight } from "@tabler/icons-vue";
+import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
-import { appConfig, parseFileName, openFileBrowser, filterColumns } from "../helpers";
+import { appConfig, parseFileName, openFileBrowser, filterColumns, globalEmitter } from "../helpers";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
 const inputElement = ref(null);
 const isDownloadExpanded = ref(false);
 const showFilterMenu = ref(false);
-// const filterColumns = reactive(fC);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -27,16 +26,21 @@ const infoItemsIds = computed({
 async function searchTracks() {
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
     .then((result) => {slavartItems.value = result.items})
-    .catch((err) => console.error("ERR", err));
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
 }
 
 async function downloadTrack(item) {
   if (!infoItemsIds.value.includes(item.id)) {
-    infoItems.value.push(item);
+    const i = infoItems.value.push(item) - 1;
     const fileName = parseFileName(item, appConfig.file_template);
-    const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName }).then((res) => true).catch((err) => console.error(err));
+    const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName })
+      .then((_) => infoItems.value[i].status = true)
+      .catch((err) => {
+        infoItems.value[i].status = false;
+        infoItems.value[i].statusMsg = err
+      });
   } else {
-    console.error("Already in queue");
+    globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${item.title} - ${item.album_title} is already in the queue` });
   };
 };
 
@@ -47,7 +51,7 @@ function removeInfoItem(id) {
 async function saveFilterColumn(filterColumn) {
   await invoke("update_config", { key: filterColumn.config, value: `${filterColumn.enabled}` })
     .then((_) => "")
-    .catch((err) => console.log(err));
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
 
 onMounted(() => {
@@ -68,8 +72,7 @@ onMounted(() => {
             <IconSearch size="20" color="var(--color-text)" class="icon"/>
         </button>
         <button style="margin-left: 10px;" @click="isDownloadExpanded = !isDownloadExpanded">
-          <IconArrowBarRight size="20" color="var(--color-text)" class="icon" v-if="isDownloadExpanded"/>
-          <IconArrowBarLeft color="var(--color-text)" class="icon" v-else/>
+          <IconArrowBarLeft size="20" color="var(--color-text)" class="icon" :class="{ 'download-expand-btn-expanded': isDownloadExpanded }"/>
         </button>
       </div>
       <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px;">
@@ -78,7 +81,7 @@ onMounted(() => {
             <thead class="table-header">
               <tr>
                 <th style="width: 20px; position: relative;">
-                  <IconDotsVertical size="18" class="icon table-filter-btn" @click="showFilterMenu = !showFilterMenu"/>
+                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu"/>
                   <div class="filter-menu" v-if="showFilterMenu" @click.stop>
                     <div class="filter-menu-arrow"></div>
                     <div v-for="column in filterColumns" :key="column.key">
@@ -164,6 +167,11 @@ onMounted(() => {
   position: sticky;
   bottom: 0px;
   background-color: var(--color-bg-1);
+  transition: all 0.2s ease;
+}
+
+.download-expand-btn-expanded {
+  transform: rotate(180deg);
 }
 
 input {
@@ -186,6 +194,7 @@ tbody {
   cursor: pointer;
   border-radius: 10px;
   border: 1px solid transparent;
+  transform: rotate(0deg);
   transition: all 0.2s ease;
 }
 
@@ -197,6 +206,10 @@ tbody {
 .expanded {
   display: flex;
   width: 200px;
+}
+
+.filter-btn-expanded {
+  transform: rotate(90deg);
 }
 
 .filter-menu {
@@ -218,7 +231,7 @@ tbody {
   width: 0; 
   height: 0; 
   border-top: 0px solid transparent; 
-  border-bottom: 15px solid var(--color-accent); /* 40px height (20+20) */
+  border-bottom: 15px solid var(--color-accent);
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
   position: absolute;

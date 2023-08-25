@@ -5,6 +5,8 @@ import { IconLoader2, IconAlertCircle, IconCircleCheck, IconTrash } from "@table
 const prop = defineProps(["item-data"]);
 const emit = defineEmits(["removeRequested"]);
 
+const showStatusMessage = ref(false);
+
 function emitRemoveRequested() {
     emit("removeRequested", prop.itemData.id);
 };
@@ -19,9 +21,12 @@ function emitRemoveRequested() {
         <div class="row">
             <p style="flex-grow: 1;">{{ prop.itemData.artist }}</p>
             <IconTrash class="icon icon-trash" style="cursor: pointer; margin-left: 5px;" @click="emitRemoveRequested" />
-            <IconLoader2 class="icon icon-loading" v-if="false"/>
-            <IconCircleCheck class="icon" v-else-if="true"/>
-            <IconAlertCircle class="icon" color="#ff1000" v-else/>
+            <IconLoader2 class="icon icon-loading" v-if="!prop.itemData.hasOwnProperty('status')"/>
+            <IconCircleCheck @click="showStatusMessage = !showStatusMessage" class="icon icon-error" v-else-if="prop.itemData.status"/>
+            <IconAlertCircle @click="showStatusMessage = !showStatusMessage" class="icon icon-error" color="#ff1000" v-else/>
+        </div>
+        <div class="status-menu" v-show="showStatusMessage">
+            {{ prop.itemData.statusMsg }}
         </div>
     </div>
 </template>
@@ -29,20 +34,23 @@ function emitRemoveRequested() {
 <style scoped>
 
 .item-data {
-  display: flex;
-  flex-direction: column;
-  min-height: 60px;
-  padding-top: 10px;
-  padding-left: 2px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid var(--color-bg-2);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 60px;
+    padding-top: 10px;
+    padding-left: 2px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--color-bg-2);
 }
 
 p {
     text-align: left;
     margin-top: 2px;
-    margin-bottom: 2px;
+    margin-bottom: 0px;
     margin-right: 2px;
+    padding-left: 5px;
+    padding-right: 5px;
     overflow: scroll;
     white-space: nowrap;
     -ms-overflow-style: none;
@@ -58,6 +66,17 @@ img {
     user-select: none;
 }
 
+.status-menu {
+    text-align: left;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding: 5px;
+    overflow-wrap: break-word;
+    background-color: var(--color-bg-2);
+    border: 1px solid var(--color-accent);
+    border-radius: 5px;
+}
+
 .icon-loading {
     animation: icon-loading-anim 1.8s linear infinite;
 }
@@ -65,6 +84,10 @@ img {
 .icon-trash {
     opacity: 0%;
     transition: opacity 0.2s ease;
+}
+
+.icon-error {
+    cursor: pointer;
 }
 
 .item-data:hover .icon-trash {
