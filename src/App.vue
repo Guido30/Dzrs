@@ -39,7 +39,9 @@ onMounted(async () => {
         <keep-alive>
             <component :is="activePage" />
         </keep-alive>
-        <Notifications v-show="showNotifications"/>
+        <Transition>
+            <Notifications v-show="showNotifications"/>
+        </Transition>
     </div>
 </template>
 
@@ -158,5 +160,15 @@ button:hover {
 
 button {
     cursor: pointer;
+}
+
+.v-enter-active,
+.v-leave-active {
+    transition: all 0.2s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+    opacity: 0;
 }
 </style>

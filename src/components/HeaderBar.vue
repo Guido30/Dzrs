@@ -1,12 +1,15 @@
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { appWindow } from "@tauri-apps/api/window";
 import { IconLayoutList } from "@tabler/icons-vue";
+
+import { globalEmitter } from "../helpers";
 
 const emit = defineEmits(["showNotifications"]);
 
 const activeButton = ref("Main");
 const showNotifications = ref(false);
+const notificationDot = ref(null);
 
 function emitPageChange(page) {
   activeButton.value = page;
@@ -17,6 +20,18 @@ function emitShowNotifications() {
     showNotifications.value = !showNotifications.value;
     emit("showNotifications", showNotifications.value);
 };
+
+onMounted(() => {
+  globalEmitter.on('notifications-state', (value) => {
+    if (value === true) {
+      notificationDot.value.classList.remove("hidden");
+      notificationDot.value.classList.add("shown");
+    } else {
+      notificationDot.value.classList.remove("shown");
+      notificationDot.value.classList.add("hidden");
+    }
+  });
+});
 
 </script>
 
@@ -36,8 +51,10 @@ function emitShowNotifications() {
         <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About'}">
           <p>About</p>
         </div>
-        <div class="row header-btn" @click="emitShowNotifications">
+        <div class="row header-btn" style="position: relative;" @click="emitShowNotifications">
           <IconLayoutList class="icon"/>
+          <div class="notification-dot hidden" ref="notificationDot">
+          </div>
         </div>
     </div>
   </div>
@@ -95,6 +112,26 @@ h1 {
   border: 1px solid var(--color-accent);
 }
 
+.notification-dot {
+  width: 15px;
+  height: 15px;
+  position: absolute;
+  right: 10px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  transition: all 0.2s ease;
+  animation-fill-mode: forwards;
+}
+
+.hidden {
+  opacity: 0%;
+  top: 25px;
+}
+
+.shown {
+  animation: notification-dot-anim 0.4s forwards;
+}
+
 img {
   width: 50px;
   height: 50px;
@@ -108,5 +145,21 @@ p {
   margin-top: 0px;
   margin-bottom: 0px;
   user-select: none;
+}
+
+@keyframes notification-dot-anim {
+  0% {
+    opacity: 0%;
+    top: 25px;
+  }
+  60% {
+    opacity: 100%;
+  }
+  80% {
+    top: 0px;
+  }
+  100% {
+    top: 5px;
+  }
 }
 </style>

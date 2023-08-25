@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { globalEmitter } from '../helpers';
 import { IconX } from '@tabler/icons-vue';
 
@@ -9,10 +9,13 @@ const noficationsCount = computed(() => notifications.value.length);
 
 onMounted(() => {
     globalEmitter.on("notification-add", (item) => {
-        notifications.value.push(item)
-    })
-})
+        notifications.value.push(item);
+    });
+});
 
+watch(hasNotifications, async (value, _) => {
+    globalEmitter.emit('notifications-state', value);
+});
 </script>
 
 <template>
@@ -42,8 +45,8 @@ onMounted(() => {
 
 .notifications-container {
     width: 35vw;
-    min-height: 90px;
-    max-height: calc(100vh - 95px);
+    height: calc(100vh - 95px);
+    justify-content: start;
     position: absolute;
     top: 75px;
     right: 10px;

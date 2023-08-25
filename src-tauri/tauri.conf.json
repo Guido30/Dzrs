@@ -41,6 +41,9 @@
         "all": true,
         "writeText": true,
         "readText": true
+      },
+      "path": {
+        "all": true
       }
     },
     "bundle": {
