@@ -51,7 +51,7 @@ onMounted(() => {
         <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About'}">
           <p>About</p>
         </div>
-        <div class="row header-btn" style="position: relative;" @click="emitShowNotifications">
+        <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative;" @click="emitShowNotifications">
           <IconLayoutList class="icon"/>
           <div class="notification-dot hidden" ref="notificationDot">
           </div>
@@ -84,6 +84,7 @@ h1 {
   padding-left: 20px;
   padding-right: 20px;
   justify-content: space-between;
+  z-index: 10;
 }
 
 .header-btns {
@@ -107,7 +108,7 @@ h1 {
   background-color: var(--color-hover);
 }
 
-.header-btn:hover {
+.header-btn:hover, .btn-hover {
   background-color: var(--color-hover);
   border: 1px solid var(--color-accent);
 }

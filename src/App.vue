@@ -8,6 +8,7 @@ import Settings from './pages/Settings.vue';
 import About from './pages/About.vue';
 import HeaderBar from './components/HeaderBar.vue';
 import Notifications from './components/Notifications.vue';
+import InstantNotifications from './components/InstantNotifications.vue';
 
 const activePage = shallowRef(Main);
 const showNotifications = ref(false);
@@ -42,6 +43,7 @@ onMounted(async () => {
         <Transition>
             <Notifications v-show="showNotifications"/>
         </Transition>
+        <InstantNotifications />
     </div>
 </template>
 
@@ -56,6 +58,12 @@ onMounted(async () => {
     --color-accent: #5a2a0a;
     --color-hover: #272727;
     --color-text: #ececec;
+    
+    --color-info: #3994b8;
+    --color-bg-info: #1a494b;
+    --color-success: #39b863;
+    --color-error: #b84139;
+    --color-bg-error: #5e2323;
 
     font-family: "Noto Sans", sans-serif;
     font-size: 16px;
@@ -82,7 +90,7 @@ onMounted(async () => {
     border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-hover);
+    background-color: var(--color-accent);
 }
 
 body {
@@ -170,5 +178,14 @@ button {
 .v-enter-from,
 .v-leave-to {
     opacity: 0;
+}
+
+@keyframes icon-loading-anim {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

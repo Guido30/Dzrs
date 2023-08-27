@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/tauri"
-import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft } from "@tabler/icons-vue";
+import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconLoader2 } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
@@ -12,6 +12,7 @@ const infoItems = ref([]);
 const inputElement = ref(null);
 const isDownloadExpanded = ref(false);
 const showFilterMenu = ref(false);
+const isSearchPending = ref(false);
 
 const infoItemsIds = computed({
   get: () => infoItems.value.map((item) => item.id),
@@ -24,14 +25,20 @@ const infoItemsIds = computed({
 });
 
 async function searchTracks() {
+  slavartItems.value = [];
+  isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
     .then((result) => {slavartItems.value = result.items})
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
+  isSearchPending.value = false;
 }
 
 async function downloadTrack(item) {
   if (!infoItemsIds.value.includes(item.id)) {
     const i = infoItems.value.push(item) - 1;
+    if (i === 0) {
+      isDownloadExpanded.value = true;
+    };
     const fileName = parseFileName(item, appConfig.file_template);
     const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName })
       .then((_) => infoItems.value[i].status = true)
@@ -65,10 +72,10 @@ onMounted(() => {
 
 <template>
   <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw;">
-    <div class="column" style="flex-grow: 1; gap: 15px; overflow-y: scroll;">
+    <div class="column" style="flex-grow: 1; gap: 15px;">
       <div class="row" style="flex-basis: 50px;">
         <input placeholder="Song name..." spellcheck="false" @keypress.enter="searchTracks" ref="inputElement"/>
-        <button style="margin-left: 10px;" @click="searchTracks()">
+        <button style="margin-left: 10px;" @click="searchTracks">
             <IconSearch size="20" color="var(--color-text)" class="icon"/>
         </button>
         <button style="margin-left: 10px;" @click="isDownloadExpanded = !isDownloadExpanded">
@@ -100,6 +107,7 @@ onMounted(() => {
               <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumnsDownload" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
             </tbody>
           </table>
+          <IconLoader2 size="100" class="icon-loading" style="height: 90%;" v-show="isSearchPending"/>
         </div>
       </div>
     </div>
@@ -244,5 +252,9 @@ tbody {
   font-size: 1em;
   font-weight: 400;
   user-select: none;
+}
+
+.icon-loading {
+    animation: icon-loading-anim 1.8s linear infinite;
 }
 </style>

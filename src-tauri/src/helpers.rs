@@ -2,8 +2,6 @@ use std::env;
 use std::env::consts::OS;
 use std::path::PathBuf;
 use std::process::Command;
-use tauri::api::dialog::blocking::FileDialogBuilder;
-use tauri::{CustomMenuItem, Menu, MenuItem, Submenu};
 
 pub fn app_data_dir() -> PathBuf {
     let mut path = PathBuf::new();
@@ -36,19 +34,19 @@ pub fn app_data_dir() -> PathBuf {
     path
 }
 
-pub fn build_file_dialog() -> FileDialogBuilder {
-    let dialog_path: PathBuf;
-    match tauri::api::path::audio_dir() {
-        Some(audio_path) => dialog_path = audio_path,
-        None => dialog_path = tauri::api::path::home_dir().unwrap(),
-    }
+// pub fn build_file_dialog() -> FileDialogBuilder {
+//     let dialog_path: PathBuf;
+//     match tauri::api::path::audio_dir() {
+//         Some(audio_path) => dialog_path = audio_path,
+//         None => dialog_path = tauri::api::path::home_dir().unwrap(),
+//     }
 
-    let file_dialog = FileDialogBuilder::new()
-        .add_filter("", &["mp3", "flac"])
-        .set_directory(dialog_path);
+//     let file_dialog = FileDialogBuilder::new()
+//         .add_filter("", &["mp3", "flac"])
+//         .set_directory(dialog_path);
 
-    file_dialog
-}
+//     file_dialog
+// }
 
 pub fn open_explorer(path: String) -> Result<(), String> {
     let path: PathBuf = path.into();

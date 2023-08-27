@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { globalEmitter } from '../helpers';
-import { IconX } from '@tabler/icons-vue';
+import { IconX, IconTrash } from '@tabler/icons-vue';
 
 const notifications = ref([])
 const hasNotifications = computed(() => !!notifications.value.length);
@@ -9,6 +9,7 @@ const noficationsCount = computed(() => notifications.value.length);
 
 onMounted(() => {
     globalEmitter.on("notification-add", (item) => {
+        globalEmitter.emit('instant-notification-add', item)
         notifications.value.push(item);
     });
 });
@@ -20,7 +21,7 @@ watch(hasNotifications, async (value, _) => {
 
 <template>
     <div class="frame column notifications-container">
-        <div class="row notifications-header" :class="{ 'notifications-header-border': !hasNotifications }">
+        <div class="row notifications-header">
             <p style="margin-right: auto; padding-left: 10px;">Notifications</p>
             <div style="width: 34px; margin-top: auto; margin-bottom: auto; padding-right: 10px;">
                 <div class="count-wrapper" >
@@ -29,14 +30,18 @@ watch(hasNotifications, async (value, _) => {
             </div>
         </div>
         <div class="column notifications-body">
-            <div class="notification" v-for="(item, index) in notifications" :key="index">
-                <div class="row" style="justify-content: start;">
-                    <span class="notification-header">Type: {{ item.type }}</span>
-                    <span class="notification-header">Origin: {{ item.origin }}</span>
-                    <IconX class="icon icon-x" size="20" color="var(--color-text)" @click="notifications.splice(i, 1)"/>
+            <div class="column" style="gap: 5px;">
+                <div class="notification" v-for="(item, index) in notifications" :key="index" :class="{ 'info': item.type === 'Info', 'error': item.type === 'Error' }">
+                    <div class="row" style="justify-content: start;">
+                        <span class="notification-header">From {{ item.origin }}</span>
+                        <IconX class="icon icon-x" size="20" color="var(--color-text)" @click="notifications.splice(i, 1)"/>
+                    </div>
+                    <p style="overflow-wrap: break-word;">{{ item.msg }}</p>
                 </div>
-                <p style="overflow-wrap: break-word;">{{ item.msg }}</p>
             </div>
+        </div>
+        <div class="row notifications-footer">
+            <IconTrash size="30" class="icon-trash" @click="notifications = []"/>
         </div>
     </div>
 </template>
@@ -55,6 +60,9 @@ watch(hasNotifications, async (value, _) => {
     border-color: var(--color-accent);
     border-radius: 15px;
     box-shadow: 2px 4px 10px #111111;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    overflow-y: hidden;
 }
 
 .notifications-container > div {
@@ -66,9 +74,10 @@ watch(hasNotifications, async (value, _) => {
     font-size: 1.5em;
     font-style: italic;
     justify-content: start;
-}
-
-.notifications-header-border {
+    position: sticky;
+    top: 0px;
+    background-color: var(--color-bg-1);
+    z-index: 1;
     border-bottom: 1px solid var(--color-bg-2);
 }
 
@@ -79,7 +88,20 @@ watch(hasNotifications, async (value, _) => {
 
 .notifications-body {
     gap: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    flex-grow: 1;
+    justify-content: start;
+    overflow-y: auto;
+}
+
+.notifications-footer {
+    justify-content: end;
     padding-bottom: 10px;
+    position: sticky;
+    bottom: 0px;
+    background-color: var(--color-bg-1);
+    border-top: 1px solid var(--color-bg-2);
 }
 
 .count-wrapper {
@@ -94,15 +116,18 @@ watch(hasNotifications, async (value, _) => {
 .notification {
     position: relative;
     min-height: 60px;
-    border-top: 1px solid var(--color-bg-2);
-    transition: all 0.2s ease;
+    padding-top: 10px;
     padding-left: 10px;
     padding-right: 10px;
+    border-radius: 15px;
 }
 
-.notification:hover {
-    border-top: 1px solid var(--color-accent);
-    background-color: var(--color-bg-2);
+.info {
+    background-color: var(--color-bg-info);
+}
+
+.error {
+    background-color: var(--color-bg-error);
 }
 
 .notification-header {
@@ -119,6 +144,10 @@ watch(hasNotifications, async (value, _) => {
     border-radius: 5px;
     background-color: var(--color-accent);
     margin-left: auto;
+}
+
+.icon-trash {
+    cursor: pointer;
 }
 
 .notification:hover .icon-x {

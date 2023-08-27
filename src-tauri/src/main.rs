@@ -4,18 +4,15 @@
 mod config;
 mod helpers;
 mod models;
-mod slavart_api;
 
 use config::DzrsConfiguration;
-use models::slavart::Search;
-use slavart_api::SlavartDownloadItems;
+use models::slavart::SlavartDownloadItems;
+use models::slavart_api::Search;
 
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::api::dialog::blocking::{FileDialogBuilder, MessageDialogBuilder};
-use tauri::api::dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri::{State, Window};
 
 #[tauri::command]
@@ -57,7 +54,10 @@ async fn download_track(
         .join(format!("{}.flac", filename));
     if file_path.exists() && (configuration.lock().unwrap().overwrite_downloads == "false") {
         println!("{:?}", configuration.lock().unwrap().overwrite_downloads);
-        return Err(format!("File {} already exists", filename));
+        return Err(format!(
+            "File {:?} already exists",
+            file_path.file_name().unwrap_or_default()
+        ));
     }
     let response = match reqwest::get(&url).await {
         Ok(res) => res,

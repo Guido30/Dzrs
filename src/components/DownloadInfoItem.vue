@@ -22,8 +22,8 @@ function emitRemoveRequested() {
             <p style="flex-grow: 1;">{{ prop.itemData.artist }}</p>
             <IconTrash class="icon icon-trash" style="cursor: pointer; margin-left: 5px;" @click="emitRemoveRequested" />
             <IconLoader2 class="icon icon-loading" v-if="!prop.itemData.hasOwnProperty('status')"/>
-            <IconCircleCheck @click="showStatusMessage = !showStatusMessage" class="icon icon-error" v-else-if="prop.itemData.status"/>
-            <IconAlertCircle @click="showStatusMessage = !showStatusMessage" class="icon icon-error" color="#ff1000" v-else/>
+            <IconCircleCheck class="icon" color="var(--color-success)" v-else-if="prop.itemData.status"/>
+            <IconAlertCircle @click="showStatusMessage = !showStatusMessage" class="icon" style="cursor: pointer;" color="var(--color-error)" v-else/>
         </div>
         <div class="status-menu" v-show="showStatusMessage">
             {{ prop.itemData.statusMsg }}
@@ -86,21 +86,8 @@ img {
     transition: opacity 0.2s ease;
 }
 
-.icon-error {
-    cursor: pointer;
-}
-
 .item-data:hover .icon-trash {
     opacity: 100%;
-}
-
-@keyframes icon-loading-anim {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 </style>

@@ -15,7 +15,6 @@
       {
         "label": "main",
         "visible": false,
-        "center": true,
         "width": 1200,
         "height": 1000,
         "minWidth": 900,

@@ -48,6 +48,8 @@ function toggleExpandGroup() {
   display: none;
   height: 0px;
   padding-top: 20px;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .expanded {

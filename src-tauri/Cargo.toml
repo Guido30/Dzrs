@@ -1,5 +1,5 @@
 [package]
-name = "Dzrs"
+name = "dzrs"
 version = "0.0.1"
 description = "A Tauri App"
 authors = ["Guido30"]
@@ -11,7 +11,8 @@ edition = "2021"
 tauri-build = { version = "1.4", features = [] }
 
 [dependencies]
-tauri = { version = "1.4", features = [ "path-all",
+tauri = { version = "1.4", features = [
+    "path-all",
     "dialog-all",
     "clipboard-all",
     "shell-open",
