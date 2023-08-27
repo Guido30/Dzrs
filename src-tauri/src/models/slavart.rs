@@ -124,7 +124,7 @@ pub struct Tracks {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct TrackItem {
     pub maximum_bit_depth: i64,
-    pub copyright: String,
+    pub copyright: Option<String>,
     pub performers: String,
     pub audio_info: AudioInfo,
     pub performer: Performer,

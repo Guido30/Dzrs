@@ -51,7 +51,7 @@ impl From<Search> for SlavartDownloadItems {
             .into_iter()
             .map(|item| {
                 let album_date = DateTime::<Utc>::from(
-                    UNIX_EPOCH + Duration::from_secs(item.album.released_at as u64),
+                    UNIX_EPOCH + Duration::from_secs(item.album.released_at.abs() as u64),
                 )
                 .format("%Y-%m-%d")
                 .to_string();
@@ -68,7 +68,7 @@ impl From<Search> for SlavartDownloadItems {
                     sampling_rate: item.maximum_sampling_rate,
                     isrc: item.isrc,
                     composer: item.composer.unwrap_or_default().name,
-                    copyright: item.copyright,
+                    copyright: item.copyright.unwrap_or_default(),
                     date: album_date,
                 }
             })

@@ -7,7 +7,7 @@ import { writeText } from '@tauri-apps/api/clipboard';
 import { IconFolder, IconTextSize, IconCheck } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
-import { appConfig, filterColumns, globalEmitter } from "../helpers";
+import { appConfig, filterColumnsDownload, globalEmitter } from "../helpers";
 
 const downloadInputValue = ref(appConfig.download_path);
 const fileTemplateInput = ref(null);
@@ -90,7 +90,7 @@ async function copyEventTargetToClipboard(event) {
           </div>
           <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start; flex-wrap: wrap;">
             <p>Available Variables:</p>
-            <p v-for="item in filterColumns" :key="item.id" @click="copyEventTargetToClipboard">{{ `%${item.key}%` }}</p>
+            <p v-for="item in filterColumnsDownload" :key="item.id" @click="copyEventTargetToClipboard">{{ `%${item.key}%` }}</p>
           </div>
         </template>
       </SettingsGroup>

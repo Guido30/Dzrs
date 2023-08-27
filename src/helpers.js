@@ -19,7 +19,8 @@ export function parseFileName(fileData, template) {
     .replaceAll("%isrc%", fileData.isrc)
     .replaceAll("%copyright%", fileData.copyright)
     .replaceAll("%bitDepth%", fileData.bit_depth)
-    .replaceAll("%samplingRate%", fileData.sampling_rate);
+    .replaceAll("%samplingRate%", fileData.sampling_rate)
+    .replaceAll(/[<>:"\/\\|?*]/g, " ");
   return fileName;
 }
 
@@ -42,7 +43,7 @@ const config = JSON.parse(
   }
 );
 
-export const filterColumns = reactive([
+export const filterColumnsDownload = reactive([
   { key: "title", label: "Title", config: "", readonly: true, enabled: true },
   { key: "album", label: "Album", config: "", readonly: true, enabled: true },
   { key: "artist", label: "Artist", config: "", readonly: true, enabled: true },
@@ -101,6 +102,23 @@ export const filterColumns = reactive([
     config: "filter_column_samplingrate",
     readonly: false,
     enabled: config.filter_column_samplingrate,
+  },
+]);
+
+export const filterColumnsDirView = reactive([
+  {
+    key: "filename",
+    label: "Filename",
+    config: "",
+    readonly: true,
+    enabled: true,
+  },
+  {
+    key: "size",
+    label: "Size",
+    config: "",
+    readonly: true,
+    enabled: true,
   },
 ]);
 

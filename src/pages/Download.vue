@@ -5,7 +5,7 @@ import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft }
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
-import { appConfig, parseFileName, openFileBrowser, filterColumns, globalEmitter } from "../helpers";
+import { appConfig, parseFileName, openFileBrowser, filterColumnsDownload, globalEmitter } from "../helpers";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
@@ -48,8 +48,8 @@ function removeInfoItem(id) {
   infoItemsIds.value = id;
 }
 
-async function saveFilterColumn(filterColumn) {
-  await invoke("update_config", { key: filterColumn.config, value: `${filterColumn.enabled}` })
+async function saveFilterColumn(filterColumnDownload) {
+  await invoke("update_config", { key: filterColumnDownload.config, value: `${filterColumnDownload.enabled}` })
     .then((_) => "")
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
@@ -84,7 +84,7 @@ onMounted(() => {
                   <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu"/>
                   <div class="filter-menu" v-if="showFilterMenu" @click.stop>
                     <div class="filter-menu-arrow"></div>
-                    <div v-for="column in filterColumns" :key="column.key">
+                    <div v-for="column in filterColumnsDownload" :key="column.key">
                       <label>
                         <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled"/>
                         {{ column.label }}
@@ -93,11 +93,11 @@ onMounted(() => {
                   </div>
                 </th>
                 <th><!-- Reserved for image --></th>
-                <th v-for="column in filterColumns" :key="column.key" v-show="column.enabled">{{ column.label }}</th>
+                <th v-for="column in filterColumnsDownload" :key="column.key" v-show="column.enabled">{{ column.label }}</th>
               </tr>
             </thead>
             <tbody>
-              <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumns" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
+              <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumnsDownload" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
             </tbody>
           </table>
         </div>
