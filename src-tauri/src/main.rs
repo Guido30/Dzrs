@@ -8,11 +8,13 @@ mod models;
 use config::DzrsConfiguration;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
+use models::watcher_file::DzrsFiles;
 
+use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{State, Window};
 
 #[tauri::command]
@@ -53,7 +55,6 @@ async fn download_track(
     let file_path = PathBuf::from(configuration.lock().unwrap().download_path.clone())
         .join(format!("{}.flac", filename));
     if file_path.exists() && (configuration.lock().unwrap().overwrite_downloads == "false") {
-        println!("{:?}", configuration.lock().unwrap().overwrite_downloads);
         return Err(format!(
             "File {:?} already exists",
             file_path.file_name().unwrap_or_default()
@@ -63,11 +64,21 @@ async fn download_track(
         Ok(res) => res,
         Err(err) => return Err(err.to_string()),
     };
+    let content_length: u64 = response.content_length().unwrap_or_default();
+    let bytes = response.bytes().await.unwrap();
+    let res_length = bytes.len();
+    if content_length != res_length as u64 {
+        return Err(format!(
+            "Download request failed, received {} / {}  bytes",
+            res_length, content_length
+        )
+        .into());
+    };
     let mut file = match File::create(file_path) {
         Ok(file) => file,
         Err(err) => return Err(err.to_string()),
     };
-    let bytes: Vec<u8> = response.bytes().await.unwrap().into();
+    let bytes: Vec<u8> = bytes.into();
     match file.write_all(&bytes) {
         Ok(_) => Ok(()),
         Err(err) => Err(err.to_string()),
@@ -125,6 +136,43 @@ async fn open_explorer(path: String) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+async fn watch_directory(
+    window: Window,
+    path: String,
+    watcher_state: State<'_, Arc<Mutex<Option<RecommendedWatcher>>>>,
+) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    let mut watcher: RecommendedWatcher = recommended_watcher(move |res| match res {
+        Ok(_) => {
+            let _ = window.emit("watcher_fired", "");
+        }
+        Err(e) => println!("watch error: {:?}", e),
+    })
+    .unwrap();
+
+    watcher
+        .watch(path.as_path(), RecursiveMode::NonRecursive)
+        .unwrap();
+
+    let mut guard = watcher_state.lock().unwrap();
+    *guard = Some(watcher);
+    Ok(())
+}
+
+#[tauri::command]
+async fn watcher_get_files(
+    path: Option<String>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<DzrsFiles, ()> {
+    let path = match path {
+        Some(p) => p,
+        None => configuration.lock().unwrap().directory_view_path.clone(),
+    };
+    let files = DzrsFiles::from(path);
+    Ok(files)
+}
+
 fn main() {
     let app_data_path = helpers::app_data_dir();
     let config_path = app_data_path.join("config.json");
@@ -136,11 +184,15 @@ fn main() {
         Ok(conf) => conf,
         Err(_) => DzrsConfiguration::default(),
     };
+    let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
         .manage(Mutex::new(configuration))
+        .manage(watcher.clone())
         .invoke_handler(tauri::generate_handler![
             show_window,
+            watch_directory,
+            watcher_get_files,
             get_config_values,
             get_config,
             update_config,

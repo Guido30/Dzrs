@@ -10,6 +10,8 @@ import HeaderBar from './components/HeaderBar.vue';
 import Notifications from './components/Notifications.vue';
 import InstantNotifications from './components/InstantNotifications.vue';
 
+import { appConfig, globalEmitter } from "./helpers";
+ 
 const activePage = shallowRef(Main);
 const showNotifications = ref(false);
 
@@ -31,6 +33,12 @@ appWindow.listen("page-change", (event) => {
 
 onMounted(async () => {
     await invoke("show_window");
+    const path = appConfig.directory_view_path;
+    if (path) {
+        await invoke("watch_directory", { path: path })
+            .then((_) => "")
+            .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_directory", msg: err }));
+    };
 });
 </script>
 

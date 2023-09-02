@@ -120,7 +120,20 @@ export const filterColumnsDirView = reactive([
     readonly: true,
     enabled: true,
   },
+  {
+    key: "extension",
+    label: "Extension",
+    config: "",
+    readonly: false,
+    enabled: true,
+  },
 ]);
+
+export const fileIconPaths = {
+  flac: "assets/icon-flac.png",
+  mp3: "assets/icon-mp3.png",
+  default: "assets/icon-file.png",
+};
 
 export const appConfig = config;
 export const globalEmitter = mitt();

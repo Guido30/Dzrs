@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { downloadDir } from "@tauri-apps/api/path";
 import { writeText } from '@tauri-apps/api/clipboard';
-import { IconFolder, IconTextSize, IconCheck } from "@tabler/icons-vue";
+import { IconFolder, IconTextSize, IconCheck, IconFile } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
 import { appConfig, filterColumnsDownload, globalEmitter } from "../helpers";
@@ -14,6 +14,7 @@ const fileTemplateInput = ref(null);
 const fileTemplateValue = ref(appConfig.file_template);
 const overwriteDownloadsInput = ref(null);
 const overwriteDownloadsValue = ref(appConfig.overwrite_downloads);
+const localFilesInputValue = ref(appConfig.directory_view_path);
 
 async function setDownloadPath() {
   const defaultPath = await downloadDir()
@@ -50,6 +51,19 @@ async function copyEventTargetToClipboard(event) {
     .then((_) => "")
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "copyEventTargetToClipboard", msg: err }));
 };
+
+async function setLocalFilesPath() {
+  const path = await open({ directory: true, multiple: false})
+    .then((result) => result)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err })); 
+  if (path !== null) {
+    await invoke("update_config", { key: "directory_view_path", value: path })
+      .then((_) => "")
+      .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
+    appConfig.directory_view_path = path;
+    localFilesInputValue.value = path;
+  };
+}
 
 </script>
 
@@ -91,6 +105,21 @@ async function copyEventTargetToClipboard(event) {
           <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start; flex-wrap: wrap;">
             <p>Available Variables:</p>
             <p v-for="item in filterColumnsDownload" :key="item.id" @click="copyEventTargetToClipboard">{{ `%${item.key}%` }}</p>
+          </div>
+        </template>
+      </SettingsGroup>
+      <SettingsGroup :body-as-column="true" class="group-local-files">
+        <template #head>
+          <IconFile size="30" class="icon setting-icon"/>
+          <h1>Local Files</h1>
+        </template>
+        <template #body>
+          <p>Default Directory</p>
+          <div class="row">
+            <input :value="localFilesInputValue" type="text" placeholder="Open..." style="flex-grow: 1;">
+            <button style="margin-left: 15px;" @click="setLocalFilesPath">
+              <IconFolder color="var(--color-text)"/>
+            </button>
           </div>
         </template>
       </SettingsGroup>
@@ -138,5 +167,9 @@ h1 {
 
 .group-file-template .row p:not(:first-child):hover {
   border: 2px solid var(--color-accent);
+}
+
+.group-local-files {
+  text-align: left;
 }
 </style>
