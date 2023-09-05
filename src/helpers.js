@@ -50,9 +50,9 @@ export const filterColumnsDownload = reactive([
   {
     key: "genre",
     label: "Genre",
-    config: "filter_column_genre",
+    config: "filter_download_genre",
     readonly: false,
-    enabled: config.filter_column_genre,
+    enabled: config.filter_download_genre,
   },
   {
     key: "duration",
@@ -64,44 +64,44 @@ export const filterColumnsDownload = reactive([
   {
     key: "date",
     label: "Date",
-    config: "filter_column_date",
+    config: "filter_download_date",
     readonly: false,
-    enabled: config.filter_column_date,
+    enabled: config.filter_download_date,
   },
   {
     key: "composer",
     label: "Composer",
-    config: "filter_column_composer",
+    config: "filter_download_composer",
     readonly: false,
-    enabled: config.filter_column_composer,
+    enabled: config.filter_download_composer,
   },
   {
     key: "isrc",
     label: "Isrc",
-    config: "filter_column_isrc",
+    config: "filter_download_isrc",
     readonly: false,
-    enabled: config.filter_column_isrc,
+    enabled: config.filter_download_isrc,
   },
   {
     key: "copyright",
     label: "Copyright",
-    config: "filter_column_copyright",
+    config: "filter_download_copyright",
     readonly: false,
-    enabled: config.filter_column_copyright,
+    enabled: config.filter_download_copyright,
   },
   {
     key: "bitDepth",
     label: "Bit Depth",
-    config: "filter_column_bitdepth",
+    config: "filter_download_bitdepth",
     readonly: false,
-    enabled: config.filter_column_bitdepth,
+    enabled: config.filter_download_bitdepth,
   },
   {
     key: "samplingRate",
     label: "Sampling",
-    config: "filter_column_samplingrate",
+    config: "filter_download_samplingrate",
     readonly: false,
-    enabled: config.filter_column_samplingrate,
+    enabled: config.filter_download_samplingrate,
   },
 ]);
 
@@ -123,9 +123,9 @@ export const filterColumnsDirView = reactive([
   {
     key: "extension",
     label: "Extension",
-    config: "",
+    config: "filter_dirview_extension",
     readonly: false,
-    enabled: true,
+    enabled: config.filter_dirview_extension,
   },
 ]);
 
