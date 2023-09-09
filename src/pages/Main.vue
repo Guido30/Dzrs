@@ -3,23 +3,24 @@ import { ref, reactive, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/api/dialog";
-import { IconDotsVertical, IconFolder, IconClipboardList } from "@tabler/icons-vue";
+import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy } from "@tabler/icons-vue";
 
 import { appConfig, filterColumnsDirView, globalEmitter, fileIconPaths } from "../helpers";
 
-const files = reactive([{}]);
-const selectedFilePaths = ref([]);
-const activeFilePath = computed(() => selectedFilePaths.value.length >= 1 ? selectedFilePaths.value[selectedFilePaths.value.length - 1] : false);
+const dzrsTracks = reactive([{}]);
+const dzrsFiles = reactive([{}]);
+const selectedDzrsFilePaths = ref([]);
+const activeDzrsFilePath = computed(() => selectedDzrsFilePaths.value.length >= 1 ? selectedDzrsFilePaths.value[selectedDzrsFilePaths.value.length - 1] : false);
 const showFilterMenu = ref(false);
-const dirPanelColumns = reactive([]);
 const currentWatchedPath = ref(appConfig.directory_view_path);
+const tagsNeedAmend = ref(false);
 
 async function loadFilesIntoView() {
   const result = await invoke("watcher_get_files", { path: currentWatchedPath.value })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watcher_get_files", msg: err }));
   if (result) {
-    files.value = result.items;
+    dzrsFiles.value = result.items;
   };
 }
 
@@ -43,44 +44,44 @@ function iconPathFromExtension(extension) {
 function selectFiles(event, file) {
   if (event.shiftKey) {
     let indexStart;
-    if (selectedFilePaths.value.length >= 1) {
-      const _filePath = selectedFilePaths.value[selectedFilePaths.value.length - 1];
-      const _i = files.value.findIndex(_file => _file.path === _filePath);
+    if (selectedDzrsFilePaths.value.length >= 1) {
+      const _filePath = selectedDzrsFilePaths.value[selectedDzrsFilePaths.value.length - 1];
+      const _i = dzrsFiles.value.findIndex(_file => _file.path === _filePath);
       indexStart = _i;
     } else {
       indexStart = 0;
     };
-    const indexEnd = files.value.indexOf(file);
+    const indexEnd = dzrsFiles.value.indexOf(file);
     if (indexStart < indexEnd) {
       for (let i = indexStart + 1; i <= indexEnd; i++) {
-        const _filePath = files.value[i].path;
-        if (selectedFilePaths.value.includes(_filePath)) {
-          const _i = selectedFilePaths.value.indexOf(_filePath);
-          selectedFilePaths.value.splice(_i, 1);
+        const _filePath = dzrsFiles.value[i].path;
+        if (selectedDzrsFilePaths.value.includes(_filePath)) {
+          const _i = selectedDzrsFilePaths.value.indexOf(_filePath);
+          selectedDzrsFilePaths.value.splice(_i, 1);
         } else {
-          selectedFilePaths.value.push(_filePath);
+          selectedDzrsFilePaths.value.push(_filePath);
         };
       };
     } else {
       for (let i = indexStart - 1; i >= indexEnd; i--) {
-        const _filePath = files.value[i].path;
-        if (selectedFilePaths.value.includes(_filePath)) {
-          const _i = selectedFilePaths.value.indexOf(_filePath);
-          selectedFilePaths.value.splice(_i, 1);
+        const _filePath = dzrsFiles.value[i].path;
+        if (selectedDzrsFilePaths.value.includes(_filePath)) {
+          const _i = selectedDzrsFilePaths.value.indexOf(_filePath);
+          selectedDzrsFilePaths.value.splice(_i, 1);
         } else {
-          selectedFilePaths.value.push(_filePath);
+          selectedDzrsFilePaths.value.push(_filePath);
         };
       };
     };
   } else if (event.ctrlKey) {
-    if (selectedFilePaths.value.includes(file.path)) {
-      let i = selectedFilePaths.value.indexOf(file.path);
-      selectedFilePaths.value.splice(i, 1);
+    if (selectedDzrsFilePaths.value.includes(file.path)) {
+      let i = selectedDzrsFilePaths.value.indexOf(file.path);
+      selectedDzrsFilePaths.value.splice(i, 1);
     } else {
-      selectedFilePaths.value.push(file.path);
+      selectedDzrsFilePaths.value.push(file.path);
     }
   } else {
-    selectedFilePaths.value = [file.path];
+    selectedDzrsFilePaths.value = [file.path];
   };
 };
 
@@ -90,10 +91,30 @@ async function saveFilterColumn(filterColumnDirView) {
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
 
+async function getDzrsTracks() {
+  let flacs;
+  if (selectedDzrsFilePaths.value.length === 0) {
+    flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
+  } else {
+    flacs = dzrsFiles.value.filter((file) => file.extension === "flac" && selectedDzrsFilePaths.value.includes(file.path));
+  };
+  const flac_paths = flacs.map((f) => f.path);
+  const result = await invoke("get_dzrs_tracks", { paths: flac_paths })
+    .then((res) => res)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracks", msg: err }));
+  dzrsTracks.value = result.items;
+  console.log(dzrsTracks.value);
+};
+
 onMounted(() => {
   loadFilesIntoView();
   appWindow.listen("watcher_fired", async (_) => {
     loadFilesIntoView();
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.table-filter-btn')) {
+      showFilterMenu.value = false;
+    }
   });
 });
 </script>
@@ -106,10 +127,16 @@ onMounted(() => {
           <button style="padding: 2px 6px;" @click="updateViewPath">
             <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-top: 4px;"/>
           </button>
-          <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px;" class="button">
+          <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px; margin-right: auto;" class="button">
             {{ currentWatchedPath ? currentWatchedPath : "..." }}
           </p>
-          <button style="padding: 2px 8px; margin-left: auto;">
+          <button style="padding: 2px 8px; margin-left: auto;" v-show="tagsNeedAmend">
+            <div class="row" style="color: var(--color-text);">
+              Amend Tags
+              <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+            </div>
+          </button>
+          <button style="padding: 2px 8px;" @click="getDzrsTracks">
             <div class="row" style="color: var(--color-text);">
               Fetch Tags
               <IconClipboardList size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
@@ -137,15 +164,16 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <template v-for="file in files.value" :key="file.path">
-                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.path) }">
+              <template v-for="file in dzrsFiles.value" :key="file.path">
+                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedDzrsFilePaths.includes(file.path) }">
                   <td><!-- Empty cell reserved for table filter --></td>
                   <td class="img-container">
                     <img :src="iconPathFromExtension(file.extension)" class="icon">
                   </td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic;">{{ file.path }}</td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic;">{{ file.filename }}</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ Math.round( file.size / 1024 ) }} KB</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">{{ file.extension }}</td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">{{ file.tag_status }}</td>
                 </tr>
               </template>
             </tbody>
@@ -155,90 +183,107 @@ onMounted(() => {
       <div class="source-panel">
         <div class="column" style="flex-grow: 1;">
           <div class="frame">
-            Ok
+            <div class="column">
+              <p>Sources</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
     <div class="tags-panel">
-      <div class="column" style="flex-grow: 1;">
-        <div class="frame">
-          <table>
-            <thead class="table-header">
-              <tr>
-                <th style="width: 10%;">Tag</th>
-                <th>Current Value</th>
-                <th>Future Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th>Title</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Artist</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Album</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Genre</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Length</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Date</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Album Artist</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Artists</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>ISRC</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Track Number</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Total Tracks</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Disc Number</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-              <tr>
-                <th>Total Discs</th>
-                <td></td>
-                <td><input type="text"></td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="frame row">
+        <div class="image-tag column" :set="track = dzrsTracks.find((track) => track.path === activeDzrsFilePath) ">
+          <div class="column">
+            <div v-if="track" v-for="picture in track.pictures">
+              <img :src="picture.b64">
+              <p>{{ picture.pic_type }}</p>
+              <p>{{ picture.description }}</p>
+              <p>{{ picture.pic_info.width }}x{{ picture.pic_info.height }}</p>
+            </div>
+            <div v-else>
+              <img src="assets/tag-image-placeholder.png">
+            </div>
+          </div>
+        </div>
+        <div class="column" style="flex-grow: 1;">
+          <div class="column" style="flex-basis: 400px; overflow-y: auto;">
+            <table>
+              <thead class="table-header">
+                <tr>
+                  <th style="width: 10%;">Tag</th>
+                  <th>Current Value</th>
+                  <th>Future Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>Title</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Artist</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Album</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Genre</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Length</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Date</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Album Artist</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Artists</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>ISRC</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Track Number</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Total Tracks</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Disc Number</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Total Discs</th>
+                  <td></td>
+                  <td><input type="text"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -253,9 +298,25 @@ onMounted(() => {
 }
 
 .tags-panel {
-  flex-basis: 300px;
-  overflow-y: auto;
   flex-grow: 0;
+}
+
+.image-tag {
+  flex-basis: 150px;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.image-tag .column {
+  flex-basis: 400px;
+  justify-content: start;
+  align-items: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.image-tag .column::-webkit-scrollbar {
+  display: none;
 }
 
 .tags-panel tbody {
@@ -308,6 +369,7 @@ tbody tr:hover, .selected-file {
 .table-header th {
   font-weight: 500;
   border-bottom: 1px solid var(--color-bg-2);
+  padding-top: 0px;
   text-wrap: nowrap;
 }
 
@@ -347,6 +409,10 @@ tbody td:not(:last-child) {
 .expanded {
   display: flex;
   width: 200px;
+}
+
+.image-tag, .image-tag img {
+  width: 150px;
 }
 
 .filter-btn-expanded {

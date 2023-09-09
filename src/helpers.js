@@ -127,6 +127,13 @@ export const filterColumnsDirView = reactive([
     readonly: false,
     enabled: config.filter_dirview_extension,
   },
+  {
+    key: "tagStatus",
+    label: "Status",
+    config: "",
+    readonly: true,
+    enabled: true,
+  },
 ]);
 
 export const fileIconPaths = {

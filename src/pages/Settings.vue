@@ -29,6 +29,7 @@ async function setDownloadPath() {
       .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
     appConfig.download_path = path;
     downloadInputValue.value = path;
+    globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   };
 };
 
@@ -37,6 +38,7 @@ async function saveFileTemplate() {
     .then((_) => "")
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFileTemplate", msg: err }));
   appConfig.file_template = fileTemplateInput.value.value
+  globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
 }
 
 async function saveOverwriteDownloads() {
@@ -62,6 +64,7 @@ async function setLocalFilesPath() {
       .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
     appConfig.directory_view_path = path;
     localFilesInputValue.value = path;
+    globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   };
 }
 

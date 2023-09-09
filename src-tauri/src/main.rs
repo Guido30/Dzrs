@@ -6,9 +6,10 @@ mod helpers;
 mod models;
 
 use config::DzrsConfiguration;
+use models::dzrs_files::DzrsFiles;
+use models::dzrs_tracks::DzrsTracks;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
-use models::watcher_file::DzrsFiles;
 
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use std::fs::File;
@@ -16,6 +17,13 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{State, Window};
+
+#[tauri::command]
+async fn get_dzrs_tracks(paths: Vec<String>) -> Result<DzrsTracks, ()> {
+    let flacs = DzrsTracks::from(paths);
+    println!("{:?}", flacs);
+    Ok(flacs)
+}
 
 #[tauri::command]
 async fn get_slavart_tracks(query: String) -> Result<SlavartDownloadItems, String> {
@@ -199,6 +207,7 @@ fn main() {
             open_explorer,
             get_slavart_tracks,
             download_track,
+            get_dzrs_tracks,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

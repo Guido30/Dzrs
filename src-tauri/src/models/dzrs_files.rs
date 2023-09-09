@@ -11,6 +11,7 @@ pub struct DzrsFiles {
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct DzrsFile {
     path: String,
+    filename: String,
     size: u64,
     extension: String,
 }
@@ -53,7 +54,8 @@ impl From<String> for DzrsFile {
         match std::fs::metadata(path.clone()) {
             Ok(metadata) => {
                 if metadata.is_file() {
-                    let _path = path
+                    let _path = path.to_str().unwrap_or_default().to_string();
+                    let filename = path
                         .file_name()
                         .unwrap_or_default()
                         .to_str()
@@ -67,6 +69,7 @@ impl From<String> for DzrsFile {
                         .to_string();
                     Self {
                         path: _path,
+                        filename: filename,
                         size: metadata.len(),
                         extension: extension,
                     }
@@ -84,7 +87,8 @@ impl From<String> for DzrsFile {
 impl From<DirEntry> for DzrsFile {
     fn from(value: DirEntry) -> Self {
         let metadata = value.metadata();
-        let path = value.file_name().to_str().unwrap_or_default().to_string();
+        let path = value.path().to_str().unwrap_or_default().to_string();
+        let filename = value.file_name().to_str().unwrap_or_default().to_string();
         let size: u64 = match metadata {
             Ok(metadata) => metadata.len(),
             Err(_) => u64::default(),
@@ -98,6 +102,7 @@ impl From<DirEntry> for DzrsFile {
             .to_string();
         Self {
             path: path,
+            filename: filename,
             size: size,
             extension: extension,
         }
