@@ -24,6 +24,7 @@ reqwest = "0.11.18"
 chrono = "0.4.26"
 notify = "6.1.1"
 lofty = "0.15.0"
+base64 = "0.21.4"
 deezerapi-rs = { path = "../../deezerapi-rs" }
 
 [features]

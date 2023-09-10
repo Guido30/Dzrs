@@ -20,6 +20,13 @@ pub struct DzrsConfiguration {
     pub filter_download_bitdepth: String,
     pub filter_download_samplingrate: String,
     pub filter_dirview_extension: String,
+    pub tag_pad_track: String,
+    pub tag_pad_track_total: String,
+    pub tag_pad_track_char: String,
+    pub tag_pad_disc: String,
+    pub tag_pad_disc_total: String,
+    pub tag_pad_disc_char: String,
+    pub tag_separator: String,
 }
 
 impl DzrsConfiguration {
@@ -55,6 +62,13 @@ impl DzrsConfiguration {
             "filter_download_bitdepth" => Ok(self.filter_download_bitdepth.clone()),
             "filter_download_samplingrate" => Ok(self.filter_download_samplingrate.clone()),
             "filter_dirview_extension" => Ok(self.filter_dirview_extension.clone()),
+            "tag_pad_track" => Ok(self.tag_pad_track.clone()),
+            "tag_pad_track_total" => Ok(self.tag_pad_track_total.clone()),
+            "tag_pad_track_char" => Ok(self.tag_pad_track_char.clone()),
+            "tag_pad_disc" => Ok(self.tag_pad_disc.clone()),
+            "tag_pad_disc_total" => Ok(self.tag_pad_disc_total.clone()),
+            "tag_pad_disc_char" => Ok(self.tag_pad_disc_char.clone()),
+            "tag_separator" => Ok(self.tag_separator.clone()),
             _ => Err(Error("Field not found in config!".into())),
         }
     }
@@ -73,6 +87,13 @@ impl DzrsConfiguration {
             "filter_download_bitdepth" => self.filter_download_bitdepth = value,
             "filter_download_samplingrate" => self.filter_download_samplingrate = value,
             "filter_dirview_extension" => self.filter_dirview_extension = value,
+            "tag_pad_track" => self.tag_pad_track = value,
+            "tag_pad_track_total" => self.tag_pad_track_total = value,
+            "tag_pad_track_char" => self.tag_pad_track_char = value,
+            "tag_pad_disc" => self.tag_pad_disc = value,
+            "tag_pad_disc_total" => self.tag_pad_disc_total = value,
+            "tag_pad_disc_char" => self.tag_pad_disc_char = value,
+            "tag_separator" => self.tag_separator = value,
             _ => (),
         }
     }
@@ -101,6 +122,13 @@ impl Default for DzrsConfiguration {
             filter_download_bitdepth: "false".into(),
             filter_download_samplingrate: "false".into(),
             filter_dirview_extension: "false".into(),
+            tag_pad_track: "false".into(),
+            tag_pad_track_total: "false".into(),
+            tag_pad_track_char: "0".into(),
+            tag_pad_disc: "false".into(),
+            tag_pad_disc_total: "false".into(),
+            tag_pad_disc_char: "0".into(),
+            tag_separator: "; ".into(),
         }
     }
 }

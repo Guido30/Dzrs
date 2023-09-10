@@ -195,10 +195,10 @@ onMounted(() => {
         <div class="image-tag column" :set="track = dzrsTracks.find((track) => track.path === activeDzrsFilePath) ">
           <div class="column">
             <div v-if="track" v-for="picture in track.pictures">
-              <img :src="picture.b64">
+              <img :src="`data:image/png;base64, ${picture.b64}`">
               <p>{{ picture.pic_type }}</p>
               <p>{{ picture.description }}</p>
-              <p>{{ picture.pic_info.width }}x{{ picture.pic_info.height }}</p>
+              <p>{{ picture.width }}x{{ picture.height }}</p>
             </div>
             <div v-else>
               <img src="assets/tag-image-placeholder.png">
@@ -305,6 +305,7 @@ onMounted(() => {
   flex-basis: 150px;
   flex-grow: 0;
   flex-shrink: 0;
+  border-right: 1px solid var(--color-bg-2);
 }
 
 .image-tag .column {

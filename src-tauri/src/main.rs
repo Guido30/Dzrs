@@ -7,7 +7,7 @@ mod models;
 
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::DzrsTracks;
+use models::dzrs_tracks::{DzrsTracks, FromWithConfig};
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
 
@@ -19,9 +19,15 @@ use std::sync::{Arc, Mutex};
 use tauri::{State, Window};
 
 #[tauri::command]
-async fn get_dzrs_tracks(paths: Vec<String>) -> Result<DzrsTracks, ()> {
-    let flacs = DzrsTracks::from(paths);
-    println!("{:?}", flacs);
+async fn get_dzrs_tracks(
+    paths: Vec<String>,
+    dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<DzrsTracks, ()> {
+    let config = configuration.lock().unwrap().clone();
+    let flacs = DzrsTracks::from_with_config(paths, &config);
+    let mut guard = dzrs_tracks.lock().unwrap();
+    *guard = flacs.clone();
     Ok(flacs)
 }
 
@@ -192,10 +198,12 @@ fn main() {
         Ok(conf) => conf,
         Err(_) => DzrsConfiguration::default(),
     };
+    let dzrs_tracks: DzrsTracks = DzrsTracks::default();
     let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
         .manage(Mutex::new(configuration))
+        .manage(Mutex::new(dzrs_tracks))
         .manage(watcher.clone())
         .invoke_handler(tauri::generate_handler![
             show_window,
