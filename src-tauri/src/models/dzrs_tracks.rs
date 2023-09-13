@@ -11,6 +11,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsTracks {
     pub items: Vec<DzrsTrack>,
 }
@@ -20,6 +21,7 @@ pub struct DzrsTracksIterator<'a> {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsTrack {
     pub path: String,
     pub tags: DzrsTrackTags,
@@ -30,6 +32,7 @@ pub struct DzrsTrack {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsTrackTags {
     title: String,
     artist: String,
@@ -65,6 +68,7 @@ pub struct DzrsTrackTags {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsTrackPicture {
     pub b64: String,
     pub pic_type: String,
@@ -74,6 +78,7 @@ pub struct DzrsTrackPicture {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsTrackTagCandidates {}
 
 impl DzrsTracks {
@@ -155,10 +160,7 @@ impl FromWithConfig<VorbisComments> for DzrsTrackTags {
             album_artist: vorbis.get("ALBUMARTIST").unwrap_or_default().to_string(),
             comment: vorbis.comment().unwrap_or_default().to_string(),
             composer: vorbis.get_all("COMPOSER").collect::<Vec<&str>>().join(sep),
-            performer: vorbis
-                .get_all("PERFORMER")
-                .collect::<Vec<&str>>()
-                .join(sep),
+            performer: vorbis.get_all("PERFORMER").collect::<Vec<&str>>().join(sep),
             producer: vorbis.get_all("PRODUCER").collect::<Vec<&str>>().join(sep),
             description: vorbis.get("DESCRIPTION").unwrap_or_default().to_string(),
             genre: vorbis.genre().unwrap_or_default().to_string(),

@@ -39,7 +39,7 @@ async function downloadTrack(item) {
     if (i === 0) {
       isDownloadExpanded.value = true;
     };
-    const fileName = parseFileName(item, appConfig.file_template);
+    const fileName = parseFileName(item, appConfig.fileTemplate);
     const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName })
       .then((_) => infoItems.value[i].status = true)
       .catch((err) => {
@@ -119,7 +119,7 @@ onMounted(() => {
           <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
         </div>
         <div class="row downloads-btns">
-            <IconFolder @click="openFileBrowser(appConfig.download_path)" size="30" style="cursor: pointer;" class="icon"/>
+            <IconFolder @click="openFileBrowser(appConfig.downloadPath)" size="30" style="cursor: pointer;" class="icon"/>
             <IconTrash @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
         </div>
       </div>

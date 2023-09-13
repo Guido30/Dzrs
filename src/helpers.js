@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
-import { reactive } from "vue";
+import { ref } from "vue";
 import mitt from "mitt";
 
 export function parseFileName(fileData, template) {
@@ -18,8 +18,8 @@ export function parseFileName(fileData, template) {
     .replaceAll("%composer%", fileData.composer)
     .replaceAll("%isrc%", fileData.isrc)
     .replaceAll("%copyright%", fileData.copyright)
-    .replaceAll("%bitDepth%", fileData.bit_depth)
-    .replaceAll("%samplingRate%", fileData.sampling_rate)
+    .replaceAll("%bitDepth%", fileData.bitDepth)
+    .replaceAll("%samplingRate%", fileData.samplingRate)
     .replaceAll(/[<>:"\/\\|?*]/g, " ");
   return fileName;
 }
@@ -43,7 +43,7 @@ const config = JSON.parse(
   }
 );
 
-export const filterColumnsDownload = reactive([
+export const filterColumnsDownload = ref([
   { key: "title", label: "Title", config: "", readonly: true, enabled: true },
   { key: "album", label: "Album", config: "", readonly: true, enabled: true },
   { key: "artist", label: "Artist", config: "", readonly: true, enabled: true },
@@ -52,7 +52,7 @@ export const filterColumnsDownload = reactive([
     label: "Genre",
     config: "filter_download_genre",
     readonly: false,
-    enabled: config.filter_download_genre,
+    enabled: config.filterDownloadGenre,
   },
   {
     key: "duration",
@@ -66,46 +66,46 @@ export const filterColumnsDownload = reactive([
     label: "Date",
     config: "filter_download_date",
     readonly: false,
-    enabled: config.filter_download_date,
+    enabled: config.filterDownloadDate,
   },
   {
     key: "composer",
     label: "Composer",
     config: "filter_download_composer",
     readonly: false,
-    enabled: config.filter_download_composer,
+    enabled: config.filterDownloadComposer,
   },
   {
     key: "isrc",
     label: "Isrc",
     config: "filter_download_isrc",
     readonly: false,
-    enabled: config.filter_download_isrc,
+    enabled: config.filterDownloadIsrc,
   },
   {
     key: "copyright",
     label: "Copyright",
     config: "filter_download_copyright",
     readonly: false,
-    enabled: config.filter_download_copyright,
+    enabled: config.filterDownloadCopyright,
   },
   {
     key: "bitDepth",
     label: "Bit Depth",
     config: "filter_download_bitdepth",
     readonly: false,
-    enabled: config.filter_download_bitdepth,
+    enabled: config.filterDownloadBitdepth,
   },
   {
     key: "samplingRate",
     label: "Sampling",
     config: "filter_download_samplingrate",
     readonly: false,
-    enabled: config.filter_download_samplingrate,
+    enabled: config.filterDownloadSamplingrate,
   },
 ]);
 
-export const filterColumnsDirView = reactive([
+export const filterColumnsDirView = ref([
   {
     key: "filename",
     label: "Filename",
@@ -125,7 +125,7 @@ export const filterColumnsDirView = reactive([
     label: "Extension",
     config: "filter_dirview_extension",
     readonly: false,
-    enabled: config.filter_dirview_extension,
+    enabled: config.filterDirviewExtension,
   },
   {
     key: "tagStatus",

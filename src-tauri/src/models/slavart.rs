@@ -7,11 +7,13 @@ use crate::models::slavart_api::Search;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct SlavartDownloadItems {
     pub items: Vec<SlavartDownloadItem>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct SlavartDownloadItem {
     pub thumbnail: String,
     pub large: String,

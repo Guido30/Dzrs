@@ -39,6 +39,9 @@ onMounted(async () => {
             .then((_) => "")
             .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_directory", msg: err }));
     };
+    if (!appConfig._loaded) {
+        globalEmitter.emit("notification-add", { type: "Info", origin: "Config", msg: "Config file could not be loaded!" });
+    };
 });
 </script>
 

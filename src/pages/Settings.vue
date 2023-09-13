@@ -9,12 +9,12 @@ import SettingsGroup from "../components/SettingsGroup.vue";
 
 import { appConfig, filterColumnsDownload, globalEmitter } from "../helpers";
 
-const downloadInputValue = ref(appConfig.download_path);
+const downloadInputValue = ref(appConfig.downloadPath);
 const fileTemplateInput = ref(null);
-const fileTemplateValue = ref(appConfig.file_template);
+const fileTemplateValue = ref(appConfig.fileTemplate);
 const overwriteDownloadsInput = ref(null);
-const overwriteDownloadsValue = ref(appConfig.overwrite_downloads);
-const localFilesInputValue = ref(appConfig.directory_view_path);
+const overwriteDownloadsValue = ref(appConfig.overwriteDownloads);
+const localFilesInputValue = ref(appConfig.directoryViewPath);
 
 async function setDownloadPath() {
   const defaultPath = await downloadDir()
@@ -27,7 +27,7 @@ async function setDownloadPath() {
     await invoke("update_config", { key: "download_path", value: path })
       .then((_) => "")
       .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
-    appConfig.download_path = path;
+    appConfig.downloadPath = path;
     downloadInputValue.value = path;
     globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   };
@@ -37,7 +37,7 @@ async function saveFileTemplate() {
   await invoke("update_config", { key: "file_template", value: fileTemplateInput.value.value })
     .then((_) => "")
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFileTemplate", msg: err }));
-  appConfig.file_template = fileTemplateInput.value.value
+  appConfig.fileTemplate = fileTemplateInput.value.value
   globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
 }
 
@@ -62,7 +62,7 @@ async function setLocalFilesPath() {
     await invoke("update_config", { key: "directory_view_path", value: path })
       .then((_) => "")
       .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
-    appConfig.directory_view_path = path;
+    appConfig.directoryViewPath = path;
     localFilesInputValue.value = path;
     globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   };

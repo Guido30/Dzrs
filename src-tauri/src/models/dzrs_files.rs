@@ -4,16 +4,28 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsFiles {
     pub items: Vec<DzrsFile>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsFile {
     path: String,
     filename: String,
     size: u64,
     extension: String,
+    tag_status: FileTagState,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum FileTagState {
+    #[default]
+    NotFetched,
+    Unsuccessfull,
+    Successfull,
 }
 
 impl Deref for DzrsFiles {
@@ -72,6 +84,7 @@ impl From<String> for DzrsFile {
                         filename: filename,
                         size: metadata.len(),
                         extension: extension,
+                        tag_status: FileTagState::default(),
                     }
                 } else {
                     return Self::default();
@@ -105,6 +118,7 @@ impl From<DirEntry> for DzrsFile {
             filename: filename,
             size: size,
             extension: extension,
+            tag_status: FileTagState::default(),
         }
     }
 }

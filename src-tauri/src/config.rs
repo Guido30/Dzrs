@@ -5,9 +5,14 @@ use std::io::{BufReader, Write};
 use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DzrsConfiguration {
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(rename = "_path")]
     _path: PathBuf,
+    #[serde(rename = "_loaded")]
+    _loaded: bool,
+    #[serde(rename = "_created")]
+    _created: bool,
     pub download_path: String,
     pub file_template: String,
     pub overwrite_downloads: String,
@@ -30,22 +35,30 @@ pub struct DzrsConfiguration {
 }
 
 impl DzrsConfiguration {
-    pub fn from_file(path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
-        let file = File::open(path.clone())?;
-        let reader = BufReader::new(file);
-        let mut result: DzrsConfiguration = match serde_json::from_reader(reader) {
-            Ok(conf) => conf,
-            Err(_) => {
-                let default_conf = Self::default();
-                let _conf_str = serde_json::to_string_pretty(&Self::default())?;
-                match std::fs::write(path.clone(), _conf_str) {
-                    Ok(_) => default_conf,
-                    Err(err) => return Err(Box::new(Error(err.to_string()))),
+    pub fn from_file(path: PathBuf) -> Self {
+        let mut result = DzrsConfiguration::default();
+        let mut loaded = false;
+        let mut created = false;
+        let file = File::open(path.clone());
+        if let Ok(file) = file {
+            let reader = BufReader::new(file);
+            let serialized_file: Result<DzrsConfiguration, _> = serde_json::from_reader(reader);
+            match serialized_file {
+                Ok(res) => {
+                    loaded = true;
+                    result = res;
                 }
-            }
+                Err(_) => {
+                    let _conf_str = serde_json::to_string_pretty(&Self::default()).unwrap();
+                    let _ = std::fs::write(path.clone(), _conf_str);
+                    created = true;
+                }
+            };
         };
         result._path = path.clone();
-        Ok(result)
+        result._loaded = loaded;
+        result._created = created;
+        result
     }
 
     pub fn get(&self, field: String) -> Result<String, Error> {
@@ -110,6 +123,8 @@ impl Default for DzrsConfiguration {
     fn default() -> Self {
         Self {
             _path: PathBuf::new(),
+            _loaded: false,
+            _created: false,
             download_path: "".into(),
             file_template: "%title% - %album%".into(),
             overwrite_downloads: "true".into(),

@@ -8,6 +8,7 @@ mod models;
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
 use models::dzrs_tracks::{DzrsTracks, FromWithConfig};
+use models::dzrs_types::NotificationAdd;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
 
@@ -16,7 +17,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 
 #[tauri::command]
 async fn get_dzrs_tracks(
@@ -194,14 +195,20 @@ fn main() {
         let _ = std::fs::create_dir_all(config_path.parent().unwrap()); //safe unwrap
         let _ = std::fs::write(config_path.clone(), b"");
     }
-    let configuration = match DzrsConfiguration::from_file(config_path) {
-        Ok(conf) => conf,
-        Err(_) => DzrsConfiguration::default(),
-    };
+    let configuration = DzrsConfiguration::from_file(config_path);
+
     let dzrs_tracks: DzrsTracks = DzrsTracks::default();
     let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
+        .setup(|app| {
+            #[cfg(debug_assertions)] // only include this code on debug builds
+            {
+                let window = app.get_window("main").unwrap();
+                window.open_devtools();
+            }
+            Ok(())
+        })
         .manage(Mutex::new(configuration))
         .manage(Mutex::new(dzrs_tracks))
         .manage(watcher.clone())
@@ -218,5 +225,5 @@ fn main() {
             get_dzrs_tracks,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while running dzrs");
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/api/dialog";
@@ -7,12 +7,13 @@ import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy } fro
 
 import { appConfig, filterColumnsDirView, globalEmitter, fileIconPaths } from "../helpers";
 
-const dzrsTracks = reactive([{}]);
-const dzrsFiles = reactive([{}]);
+const dzrsTracks = ref([{}]);
+const dzrsFiles = ref([{}]);
 const selectedDzrsFilePaths = ref([]);
 const activeDzrsFilePath = computed(() => selectedDzrsFilePaths.value.length >= 1 ? selectedDzrsFilePaths.value[selectedDzrsFilePaths.value.length - 1] : false);
+const activeDzrsTrack = computed(() => activeDzrsFilePath.value ? dzrsTracks.value.find((track) => track.path === activeDzrsFilePath.value) : false);
 const showFilterMenu = ref(false);
-const currentWatchedPath = ref(appConfig.directory_view_path);
+const currentWatchedPath = ref(appConfig.directoryViewPath);
 const tagsNeedAmend = ref(false);
 
 async function loadFilesIntoView() {
@@ -25,7 +26,7 @@ async function loadFilesIntoView() {
 }
 
 async function updateViewPath() {
-  const path = await open({ defaultPath: appConfig.directory_view_path, directory: true, multiple: false })
+  const path = await open({ defaultPath: appConfig.directoryViewPath, directory: true, multiple: false })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
   if (path !== null) {
@@ -164,7 +165,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <template v-for="file in dzrsFiles.value" :key="file.path">
+              <template v-for="file in dzrsFiles" :key="file.path">
                 <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedDzrsFilePaths.includes(file.path) }">
                   <td><!-- Empty cell reserved for table filter --></td>
                   <td class="img-container">
@@ -173,7 +174,7 @@ onMounted(() => {
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic;">{{ file.filename }}</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ Math.round( file.size / 1024 ) }} KB</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">{{ file.extension }}</td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">{{ file.tag_status }}</td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">{{ file.tagStatus }}</td>
                 </tr>
               </template>
             </tbody>
@@ -192,11 +193,11 @@ onMounted(() => {
     </div>
     <div class="tags-panel">
       <div class="frame row">
-        <div class="image-tag column" :set="track = dzrsTracks.find((track) => track.path === activeDzrsFilePath) ">
+        <div class="image-tag column">
           <div class="column">
-            <div v-if="track" v-for="picture in track.pictures">
+            <div v-if="activeDzrsTrack" v-for="picture in activeDzrsTrack.pictures">
               <img :src="`data:image/png;base64, ${picture.b64}`">
-              <p>{{ picture.pic_type }}</p>
+              <p>{{ picture.picType }}</p>
               <p>{{ picture.description }}</p>
               <p>{{ picture.width }}x{{ picture.height }}</p>
             </div>
@@ -218,22 +219,82 @@ onMounted(() => {
               <tbody>
                 <tr>
                   <th>Title</th>
-                  <td></td>
+                  <td>{{ activeDzrsTrack.tags.title }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
                   <th>Artist</th>
-                  <td></td>
+                  <td>{{ activeDzrsTrack.tags.artist }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Artists</th>
+                  <td>{{ activeDzrsTrack.tags.artists }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
                   <th>Album</th>
-                  <td></td>
+                  <td>{{ activeDzrsTrack.tags.album }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Album Artist</th>
+                  <td>{{ activeDzrsTrack.tags.albumArtist }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Composer</th>
+                  <td>{{ activeDzrsTrack.tags.composer }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Performer</th>
+                  <td>{{ activeDzrsTrack.tags.performer }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Producer</th>
+                  <td>{{ activeDzrsTrack.tags.producer }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
                   <th>Genre</th>
-                  <td></td>
+                  <td>{{ activeDzrsTrack.tags.genre }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Lyrics</th>
+                  <td>{{ activeDzrsTrack.tags.lyrics }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Copyright</th>
+                  <td>{{ activeDzrsTrack.tags.copyright }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Description</th>
+                  <td>{{ activeDzrsTrack.tags.description }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Track Number</th>
+                  <td>{{ activeDzrsTrack.tags.trackNumber }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Total Tracks</th>
+                  <td>{{ activeDzrsTrack.tags.trackTotal }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Disc Number</th>
+                  <td>{{ activeDzrsTrack.tags.discNumber }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Total Discs</th>
+                  <td>{{ activeDzrsTrack.tags.discTotal }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
@@ -243,42 +304,72 @@ onMounted(() => {
                 </tr>
                 <tr>
                   <th>Date</th>
-                  <td></td>
+                  <td>{{ activeDzrsTrack.tags.date }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
-                  <th>Album Artist</th>
-                  <td></td>
+                  <th>Year</th>
+                  <td>{{ activeDzrsTrack.tags.year }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
-                  <th>Artists</th>
-                  <td></td>
+                  <th>Original Date</th>
+                  <td>{{ activeDzrsTrack.tags.originalDate }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Original Year</th>
+                  <td>{{ activeDzrsTrack.tags.originalYear }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Comment</th>
+                  <td>{{ activeDzrsTrack.tags.comment }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Label</th>
+                  <td>{{ activeDzrsTrack.tags.label }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Barcode</th>
+                  <td>{{ activeDzrsTrack.tags.barcode }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
                   <th>ISRC</th>
-                  <td></td>
+                  <td>{{ activeDzrsTrack.tags.isrc }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
-                  <th>Track Number</th>
-                  <td></td>
+                  <th>BPM</th>
+                  <td>{{ activeDzrsTrack.tags.bpm }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
-                  <th>Total Tracks</th>
-                  <td></td>
+                  <th>Replaygain Track Gain</th>
+                  <td>{{ activeDzrsTrack.tags.replaygainTrackGain }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
-                  <th>Disc Number</th>
-                  <td></td>
+                  <th>Replaygain Track Peak</th>
+                  <td>{{ activeDzrsTrack.tags.replaygainTrackPeak }}</td>
                   <td><input type="text"></td>
                 </tr>
                 <tr>
-                  <th>Total Discs</th>
-                  <td></td>
+                  <th>Replaygain Album Gain</th>
+                  <td>{{ activeDzrsTrack.tags.replaygainAlbumGain }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Replaygain Album Peak</th>
+                  <td>{{ activeDzrsTrack.tags.replaygainAlbumPeak }}</td>
+                  <td><input type="text"></td>
+                </tr>
+                <tr>
+                  <th>Encoder</th>
+                  <td>{{ activeDzrsTrack.tags.encoder }}</td>
                   <td><input type="text"></td>
                 </tr>
               </tbody>

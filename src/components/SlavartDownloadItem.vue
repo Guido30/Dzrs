@@ -40,8 +40,8 @@ function emitDownloadRequested() {
     <td v-show="prop.columns.find((i) => i.key === 'composer').enabled" class="text-pad">{{ prop.itemData.composer }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'isrc').enabled" class="text-pad">{{ prop.itemData.isrc }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'copyright').enabled" class="text-pad">{{ prop.itemData.copyright }}</td>
-    <td v-show="prop.columns.find((i) => i.key === 'bitDepth').enabled">{{ prop.itemData.bit_depth }}</td>
-    <td v-show="prop.columns.find((i) => i.key === 'samplingRate').enabled">{{ prop.itemData.sampling_rate }} kHz</td>
+    <td v-show="prop.columns.find((i) => i.key === 'bitDepth').enabled">{{ prop.itemData.bitDepth }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'samplingRate').enabled">{{ prop.itemData.samplingRate }} kHz</td>
   </tr>
 </template>
 
