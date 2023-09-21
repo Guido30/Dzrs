@@ -17,7 +17,7 @@ function emitRemoveRequested() {
     <div class="item-data">
         <img :src="prop.itemData.large">
         <p>{{ prop.itemData.title }}</p>
-        <p>{{ prop.itemData.album_title }}</p>
+        <p>{{ prop.itemData.albumTitle }}</p>
         <div class="row">
             <p style="flex-grow: 1;">{{ prop.itemData.artist }}</p>
             <IconTrash class="icon icon-trash" style="cursor: pointer; margin-left: 5px;" @click="emitRemoveRequested" />

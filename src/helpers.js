@@ -5,7 +5,7 @@ import mitt from "mitt";
 export function parseFileName(fileData, template) {
   const fileName = template
     .replaceAll("%title%", fileData.title)
-    .replaceAll("%album%", fileData.album_title)
+    .replaceAll("%album%", fileData.albumTitle)
     .replaceAll("%artist%", fileData.artist)
     .replaceAll("%genre%", fileData.genre)
     .replaceAll(

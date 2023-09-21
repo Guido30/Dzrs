@@ -28,7 +28,7 @@ async function searchTracks() {
   slavartItems.value = [];
   isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
-    .then((result) => {slavartItems.value = result.items})
+    .then((result) => {slavartItems.value = result.items; console.log(result.items);})
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
   isSearchPending.value = false;
 }
@@ -47,7 +47,7 @@ async function downloadTrack(item) {
         infoItems.value[i].statusMsg = err
       });
   } else {
-    globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${item.title} - ${item.album_title} is already in the queue` });
+    globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${item.title} - ${item.albumTitle} is already in the queue` });
   };
 };
 

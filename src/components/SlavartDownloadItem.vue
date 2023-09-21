@@ -32,7 +32,7 @@ function emitDownloadRequested() {
       </div>
     </td>
     <td v-show="prop.columns.find((i) => i.key === 'title').enabled" class="text-pad">{{ prop.itemData.title }}</td>
-    <td v-show="prop.columns.find((i) => i.key === 'album').enabled" class="text-pad">{{ prop.itemData.album_title }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'album').enabled" class="text-pad">{{ prop.itemData.albumTitle }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'artist').enabled" class="text-pad">{{ prop.itemData.artist }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'genre').enabled" class="text-pad">{{ prop.itemData.genre }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'duration').enabled">{{ Math.floor(prop.itemData.duration / 60) }}:{{ (prop.itemData.duration % 60).toString().padStart(2, "0") }}</td>

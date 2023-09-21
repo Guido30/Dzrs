@@ -37,26 +37,26 @@ pub struct DzrsTrackTags {
     title: String,
     artist: String,
     artists: String,
-    barcode: String,
     album: String,
     album_artist: String,
-    comment: String,
     composer: String,
     performer: String,
     producer: String,
-    description: String,
     genre: String,
     lyrics: String,
     copyright: String,
+    description: String,
     track_number: String,
     track_total: String,
     disc_number: String,
     disc_total: String,
     date: String,
+    year: String,
     original_date: String,
     original_year: String,
+    comment: String,
     label: String,
-    year: String,
+    barcode: String,
     isrc: String,
     bpm: String,
     replaygain_album_gain: String,
@@ -82,8 +82,16 @@ pub struct DzrsTrackPicture {
 pub struct DzrsTrackTagCandidates {}
 
 impl DzrsTracks {
+    pub fn add(&mut self, track: DzrsTrack) {
+        self.items.push(track);
+    }
+
     pub fn get_track(&self, path: String) -> Option<&DzrsTrack> {
         self.iter().find(|&track| track.path == path)
+    }
+
+    pub fn get_track_mut(&mut self, path: String) -> Option<&mut DzrsTrack> {
+        self.iter_mut().find(|track| track.path == path)
     }
 }
 

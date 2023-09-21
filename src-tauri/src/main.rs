@@ -7,7 +7,7 @@ mod models;
 
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::{DzrsTracks, FromWithConfig};
+use models::dzrs_tracks::{DzrsTrack, DzrsTracks, FromWithConfig};
 use models::dzrs_types::NotificationAdd;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
@@ -26,8 +26,17 @@ async fn get_dzrs_tracks(
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<DzrsTracks, ()> {
     let config = configuration.lock().unwrap().clone();
-    let flacs = DzrsTracks::from_with_config(paths, &config);
     let mut guard = dzrs_tracks.lock().unwrap();
+    let mut flacs = guard.clone();
+    for path in paths {
+        if let Some(_) = flacs.get_track(path.clone()) {
+            let updated_track = DzrsTrack::from_with_config(path.clone(), &config);
+            *flacs.get_track_mut(path.clone()).unwrap() = updated_track;
+        } else {
+            let new_track = DzrsTrack::from_with_config(path, &config);
+            flacs.add(new_track);
+        }
+    }
     *guard = flacs.clone();
     Ok(flacs)
 }
