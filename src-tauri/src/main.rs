@@ -22,18 +22,31 @@ use tauri::{Manager, State, Window};
 #[tauri::command]
 async fn get_dzrs_tracks(
     paths: Vec<String>,
+    clear_stored: bool,
+    get_deezer_tags: bool,
     dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<DzrsTracks, ()> {
     let config = configuration.lock().unwrap().clone();
     let mut guard = dzrs_tracks.lock().unwrap();
     let mut flacs = guard.clone();
+    if clear_stored {
+        flacs.clear();
+    };
     for path in paths {
         if let Some(_) = flacs.get_track(path.clone()) {
-            let updated_track = DzrsTrack::from_with_config(path.clone(), &config);
+            let updated_track = if get_deezer_tags {
+                DzrsTrack::from_with_deezer(path.clone(), &config)
+            } else {
+                DzrsTrack::from_with_config(path.clone(), &config)
+            };
             *flacs.get_track_mut(path.clone()).unwrap() = updated_track;
         } else {
-            let new_track = DzrsTrack::from_with_config(path, &config);
+            let new_track = if get_deezer_tags {
+                DzrsTrack::from_with_deezer(path, &config)
+            } else {
+                DzrsTrack::from_with_config(path, &config)
+            };
             flacs.add(new_track);
         }
     }

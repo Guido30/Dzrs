@@ -40,7 +40,7 @@ onMounted(() => {
     <img src="../assets/logox256.png">
     <div class="row header-btns">
         <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main'}">
-          <p>Home</p>
+          <p>Tagging</p>
         </div>
         <div class="row header-btn" @click="emitPageChange('Download')" :class="{ active: activeButton === 'Download'}">
           <p>Download</p>

@@ -3,9 +3,9 @@ import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/api/dialog";
-import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressCheck } from "@tabler/icons-vue";
+import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
 
-import { appConfig, filterColumnsDirView, globalEmitter, fileIconPaths } from "../helpers";
+import { appConfig, filterColumnsDirView, globalEmitter } from "../helpers";
 
 const dzrsTracks = ref([{}]);
 const dzrsFiles = ref([{}]);
@@ -42,15 +42,11 @@ async function updateViewPath() {
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
   if (path !== null) {
     currentWatchedPath.value = path;
-    loadFilesIntoView();
+    await loadFilesIntoView();
+    await getDzrsTracks();
     await invoke("watch_directory", { path: path })
       .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
   };
-};
-
-function iconPathFromExtension(extension) {
-  const path = fileIconPaths.hasOwnProperty(extension) ? fileIconPaths[`${extension}`] : fileIconPaths["default"];
-  return path
 };
 
 function selectFiles(event, file) {
@@ -104,6 +100,16 @@ async function saveFilterColumn(filterColumnDirView) {
 }
 
 async function getDzrsTracks() {
+  const flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
+  const flac_paths = flacs.map((f) => f.path);
+  const result = await invoke("get_dzrs_tracks", { paths: flac_paths, clearStored: true, getDeezerTags: false })
+    .then((res) => res)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
+  dzrsTracks.value = result.items;
+  updateDzrsFilesStatus();
+};
+
+async function getDzrsTracksFromSelection() {
   let flacs;
   if (selectedDzrsFilePaths.value.length === 0) {
     flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
@@ -111,17 +117,42 @@ async function getDzrsTracks() {
     flacs = dzrsFiles.value.filter((file) => file.extension === "flac" && selectedDzrsFilePaths.value.includes(file.path));
   };
   const flac_paths = flacs.map((f) => f.path);
-  const result = await invoke("get_dzrs_tracks", { paths: flac_paths })
+  const result = await invoke("get_dzrs_tracks", { paths: flac_paths, clearStored: false, getDeezerTags: true })
     .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracks", msg: err }));
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
   dzrsTracks.value = result.items;
-  console.log(dzrsTracks.value);
+  updateDzrsFilesStatus();
 };
 
-onMounted(() => {
-  loadFilesIntoView();
+function updateDzrsFilesStatus() {
+  const pathsAndStatuses = dzrsTracks.value.map((track) => {
+    let status;
+    if (track.saved) {
+      status = "Finalized"
+    } else if (track.matched) {
+      status = "Matched"
+    } else if (track.fetched) {
+      status = "Successfull"
+    } else if (track.fetched && !track.candidates) {
+      status = "Unsuccessfull"
+    } else {
+      status = "NotFetched"
+    }
+    return [track.path, status]
+  });
+  pathsAndStatuses.forEach((v) => {
+    const i = dzrsFiles.value.findIndex((file) => file.path === v[0]);
+    if (i !== -1) {
+      dzrsFiles.value[i].tagStatus = v[1]
+    }
+  });
+};
+
+onMounted(async () => {
+  await loadFilesIntoView();
+  await getDzrsTracks();
   appWindow.listen("watcher_fired", async (_) => {
-    loadFilesIntoView();
+    await loadFilesIntoView();
   });
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.table-filter-btn')) {
@@ -148,7 +179,7 @@ onMounted(() => {
               <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
             </div>
           </button>
-          <button style="padding: 2px 8px;" @click="getDzrsTracks">
+          <button style="padding: 2px 8px;" @click="getDzrsTracksFromSelection">
             <div class="row" style="color: var(--color-text);">
               Fetch Tags
               <IconClipboardList size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
@@ -171,7 +202,7 @@ onMounted(() => {
                     </div>
                   </div>
                 </th>
-                <th><!-- Reserved for image --></th>
+                <th><!-- Reserved for icon --></th>
                 <th v-for="column in filterColumnsDirView" :key="column.key" v-show="column.enabled">{{ column.label }}</th>
               </tr>
             </thead>
@@ -180,13 +211,17 @@ onMounted(() => {
                 <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedDzrsFilePaths.includes(file.path) }">
                   <td><!-- Empty cell reserved for table filter --></td>
                   <td class="img-container">
-                    <img :src="iconPathFromExtension(file.extension)" class="icon">
+                    <IconMusic v-if="['flac', 'mp3'].includes(file.extension)"/>
+                    <IconFile v-else/>
+                    <!-- <img :src="iconPathFromExtension(file.extension)" class="icon"> -->
                   </td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic;">{{ file.filename }}</td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ Math.round( file.size / 1024 ) }} KB</td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ (file.size / (1024 * 1024)).toFixed(1) }} MB</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">{{ file.extension }}</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">
-                    <IconProgressCheck v-if="file.tagStatus === 'Successfull'"/>
+                    <IconProgressCheck v-if="file.tagStatus === 'Finalized'"/>
+                    <IconProgressBolt v-else-if="file.tagStatus === 'Matched'"/>
+                    <IconProgressHelp v-else-if="file.tagStatus === 'Successfull'"/>
                     <IconProgressAlert v-else-if="file.tagStatus === 'Unsuccessfull'"/>
                     <IconProgress v-else/>
                   </td>
@@ -236,82 +271,82 @@ onMounted(() => {
                 <tr>
                   <th>Title</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.title : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.title : ''"></td>
                 </tr>
                 <tr>
                   <th>Artist</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.artist : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.artist : ''"></td>
                 </tr>
                 <tr>
                   <th>Artists</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.artists : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.artists : ''"></td>
                 </tr>
                 <tr>
                   <th>Album</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.album : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.album : ''"></td>
                 </tr>
                 <tr>
                   <th>Album Artist</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.albumArtist : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.albumArtist : ''"></td>
                 </tr>
                 <tr>
                   <th>Composer</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.composer : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.composer : ''"></td>
                 </tr>
                 <tr>
                   <th>Performer</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.performer : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.performer : ''"></td>
                 </tr>
                 <tr>
                   <th>Producer</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.producer : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.producer : ''"></td>
                 </tr>
                 <tr>
                   <th>Genre</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.genre : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.genre : ''"></td>
                 </tr>
                 <tr>
                   <th>Lyrics</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.lyrics : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.lyrics : ''"></td>
                 </tr>
                 <tr>
                   <th>Copyright</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.copyright : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.copyright : ''"></td>
                 </tr>
                 <tr>
                   <th>Description</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.description : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.description : ''"></td>
                 </tr>
                 <tr>
                   <th>Track Number</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.trackNumber : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.trackNumber : ''"></td>
                 </tr>
                 <tr>
                   <th>Total Tracks</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.trackTotal : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.trackTotal : ''"></td>
                 </tr>
                 <tr>
                   <th>Disc Number</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.discNumber : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.discNumber : ''"></td>
                 </tr>
                 <tr>
                   <th>Total Discs</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.discTotal : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.discTotal : ''"></td>
                 </tr>
                 <tr>
                   <th>Length</th>
@@ -321,72 +356,72 @@ onMounted(() => {
                 <tr>
                   <th>Date</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.date : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.date : ''"></td>
                 </tr>
                 <tr>
                   <th>Year</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.year : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.year : ''"></td>
                 </tr>
                 <tr>
                   <th>Original Date</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.originalDate : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.originalDate : ''"></td>
                 </tr>
                 <tr>
                   <th>Original Year</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.originalYear : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.originalYear : ''"></td>
                 </tr>
                 <tr>
                   <th>Comment</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.comment : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.comment : ''"></td>
                 </tr>
                 <tr>
                   <th>Label</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.label : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.label : ''"></td>
                 </tr>
                 <tr>
                   <th>Barcode</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.barcode : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.barcode : ''"></td>
                 </tr>
                 <tr>
                   <th>ISRC</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.isrc : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.isrc : ''"></td>
                 </tr>
                 <tr>
                   <th>BPM</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.bpm : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.bpm : ''"></td>
                 </tr>
                 <tr>
                   <th>Replaygain Track Gain</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.replaygainTrackGain : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainTrackGain : ''"></td>
                 </tr>
                 <tr>
                   <th>Replaygain Track Peak</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.replaygainTrackPeak : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainTrackPeak : ''"></td>
                 </tr>
                 <tr>
                   <th>Replaygain Album Gain</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.replaygainAlbumGain : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainAlbumGain : ''"></td>
                 </tr>
                 <tr>
                   <th>Replaygain Album Peak</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.replaygainAlbumPeak : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainAlbumPeak : ''"></td>
                 </tr>
                 <tr>
                   <th>Encoder</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.encoder : "" }}</td>
-                  <td><input type="text"></td>
+                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.encoder : ''"></td>
                 </tr>
               </tbody>
             </table>
@@ -513,7 +548,7 @@ tbody td:not(:last-child) {
   table-layout: fixed;
 }
 
-.img-container, .img-container img {
+.img-container, .img-container * {
   width: 30px;
 }
 

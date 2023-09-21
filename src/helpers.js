@@ -136,12 +136,6 @@ export const filterColumnsDirView = ref([
   },
 ]);
 
-export const fileIconPaths = {
-  flac: "assets/icon-flac.png",
-  mp3: "assets/icon-mp3.png",
-  default: "assets/icon-file.png",
-};
-
 export const appConfig = config;
 export const globalEmitter = mitt();
 

@@ -26,6 +26,8 @@ pub enum FileTagState {
     NotFetched,
     Unsuccessfull,
     Successfull,
+    Matched,
+    Finalized,
 }
 
 impl Deref for DzrsFiles {

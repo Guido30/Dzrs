@@ -26,9 +26,11 @@ pub struct DzrsTrack {
     pub path: String,
     pub tags: DzrsTrackTags,
     pub pictures: Vec<DzrsTrackPicture>,
+    pub tags_deezer: DzrsTrackTags,
     pub tag_candidates: DzrsTrackTagCandidates,
     pub matched: bool,
-    pub success: bool,
+    pub fetched: bool,
+    pub candidates: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -86,6 +88,10 @@ impl DzrsTracks {
         self.items.push(track);
     }
 
+    pub fn clear(&mut self) {
+        self.items.clear();
+    }
+
     pub fn get_track(&self, path: String) -> Option<&DzrsTrack> {
         self.iter().find(|&track| track.path == path)
     }
@@ -97,9 +103,12 @@ impl DzrsTracks {
 
 pub trait FromWithConfig<T>
 where
-    Self: Sized,
+    Self: Sized + Default,
 {
     fn from_with_config(value: T, config: &DzrsConfiguration) -> Self;
+    fn from_with_deezer(_value: T, _config: &DzrsConfiguration) -> Self {
+        Self::default()
+    }
 }
 
 impl FromWithConfig<Vec<String>> for DzrsTracks {
@@ -128,7 +137,7 @@ impl FromWithConfig<Vec<String>> for DzrsTracks {
 
 impl FromWithConfig<String> for DzrsTrack {
     fn from_with_config(path: String, config: &DzrsConfiguration) -> Self {
-        // Read file from given path and its currently stored tags, and try to get tags from deezer, setting the matched to true if a high accuracy match is found
+        // Read file from given path and its currently stored tags
         let file = match File::open(path.clone()) {
             Ok(f) => f,
             Err(_) => return Self::default(),
@@ -149,10 +158,28 @@ impl FromWithConfig<String> for DzrsTrack {
             path: path,
             tags,
             pictures,
+            tags_deezer: DzrsTrackTags::default(),
             tag_candidates: DzrsTrackTagCandidates::default(),
             matched: false,
-            success: true,
+            fetched: false,
+            candidates: false,
         }
+    }
+
+    fn from_with_deezer(path: String, config: &DzrsConfiguration) -> Self {
+        // Read file from given path and its currently stored tags, and try to get tags from deezer, setting the matched to true if a high accuracy match is found
+        let dzrs_track = Self::from_with_config(path, config);
+
+        // let deezer = Deezer::new();
+        // let api_tracks = deezer.search_track(
+        //     &dzrs_track.tags.title,
+        //     &dzrs_track.tags.artist,
+        //     &dzrs_track.tags.album,
+        //     false,
+        // );
+
+        // println!("{:?}", api_tracks);
+        dzrs_track
     }
 }
 

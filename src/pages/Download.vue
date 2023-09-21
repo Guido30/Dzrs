@@ -28,7 +28,7 @@ async function searchTracks() {
   slavartItems.value = [];
   isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
-    .then((result) => {slavartItems.value = result.items; console.log(result.items);})
+    .then((result) => slavartItems.value = result.items)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
   isSearchPending.value = false;
 }
