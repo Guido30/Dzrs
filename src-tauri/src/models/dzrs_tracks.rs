@@ -99,16 +99,61 @@ impl DzrsTracks {
     pub fn get_track_mut(&mut self, path: String) -> Option<&mut DzrsTrack> {
         self.iter_mut().find(|track| track.path == path)
     }
+
+    pub async fn update(
+        &mut self,
+        paths: Vec<String>,
+        config: &DzrsConfiguration,
+        fetch_deezer_tags: bool,
+    ) {
+        for path in paths {
+            match self.get_track(path.clone()) {
+                Some(_) => {
+                    let updated_track = if fetch_deezer_tags {
+                        DzrsTrack::from_with_deezer(path.clone(), &config).await
+                    } else {
+                        DzrsTrack::from_with_config(path.clone(), &config)
+                    };
+                    *self.get_track_mut(path.clone()).unwrap() = updated_track;
+                }
+                None => {
+                    let new_track = if fetch_deezer_tags {
+                        DzrsTrack::from_with_deezer(path, &config).await
+                    } else {
+                        DzrsTrack::from_with_config(path, &config)
+                    };
+                    self.add(new_track);
+                }
+            }
+        }
+    }
+}
+
+impl DzrsTrack {
+    pub async fn from_with_deezer(path: String, config: &DzrsConfiguration) -> Self {
+        // Read file from given path and its currently stored tags, and try to get tags from deezer, setting the matched to true if a high accuracy match is found
+        let dzrs_track = Self::from_with_config(path, config);
+
+        let deezer = Deezer::new();
+        let api_tracks = deezer
+            .search_track(
+                &dzrs_track.tags.title,
+                &dzrs_track.tags.artist,
+                &dzrs_track.tags.album,
+                false,
+            )
+            .await;
+
+        println!("{:?}", api_tracks);
+        dzrs_track
+    }
 }
 
 pub trait FromWithConfig<T>
 where
-    Self: Sized + Default,
+    Self: Sized,
 {
     fn from_with_config(value: T, config: &DzrsConfiguration) -> Self;
-    fn from_with_deezer(_value: T, _config: &DzrsConfiguration) -> Self {
-        Self::default()
-    }
 }
 
 impl FromWithConfig<Vec<String>> for DzrsTracks {
@@ -164,22 +209,6 @@ impl FromWithConfig<String> for DzrsTrack {
             fetched: false,
             candidates: false,
         }
-    }
-
-    fn from_with_deezer(path: String, config: &DzrsConfiguration) -> Self {
-        // Read file from given path and its currently stored tags, and try to get tags from deezer, setting the matched to true if a high accuracy match is found
-        let dzrs_track = Self::from_with_config(path, config);
-
-        // let deezer = Deezer::new();
-        // let api_tracks = deezer.search_track(
-        //     &dzrs_track.tags.title,
-        //     &dzrs_track.tags.artist,
-        //     &dzrs_track.tags.album,
-        //     false,
-        // );
-
-        // println!("{:?}", api_tracks);
-        dzrs_track
     }
 }
 

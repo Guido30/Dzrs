@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/api/dialog";
+import { open as shellOpen } from '@tauri-apps/api/shell';
 import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
 
 import { appConfig, filterColumnsDirView, globalEmitter } from "../helpers";
@@ -25,7 +26,7 @@ const activeDzrsTrack = computed(() => {
 });
 const showFilterMenu = ref(false);
 const currentWatchedPath = ref(appConfig.directoryViewPath);
-const tagsNeedAmend = ref(false);
+const tagsNeedSave = ref(false);
 
 async function loadFilesIntoView() {
   const result = await invoke("watcher_get_files", { path: currentWatchedPath.value })
@@ -34,6 +35,11 @@ async function loadFilesIntoView() {
   if (result) {
     dzrsFiles.value = result.items;
   };
+}
+
+async function openLocalFilesExplorer() {
+  await invoke("open_explorer", { path: appConfig.directoryViewPath })
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "openLocalFilesExplorer", msg: err }));
 }
 
 async function updateViewPath() {
@@ -167,22 +173,31 @@ onMounted(async () => {
     <div class="row" style="gap: 5px; flex-grow: 1;">
       <div class="directory-panel">
         <div class="row" style="gap: 10px; margin-bottom: 8px;">
-          <button style="padding: 2px 6px;" @click="updateViewPath">
-            <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-top: 4px;"/>
+          <button style="padding: 2px 8px;" @click="updateViewPath">
+            <div class="row" style="color: var(--color-text);">
+              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px;"/>
+              Open
+            </div>
           </button>
           <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px; margin-right: auto;" class="button">
             {{ currentWatchedPath ? currentWatchedPath : "..." }}
           </p>
-          <button style="padding: 2px 8px; margin-left: auto;" v-show="tagsNeedAmend">
+          <button style="padding: 2px 8px; margin-left: auto;" @click="openLocalFilesExplorer" v-show="appConfig.directoryViewPath">
             <div class="row" style="color: var(--color-text);">
-              Amend Tags
-              <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+              Browse
+              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
             </div>
           </button>
           <button style="padding: 2px 8px;" @click="getDzrsTracksFromSelection">
             <div class="row" style="color: var(--color-text);">
-              Fetch Tags
+              Fetch
               <IconClipboardList size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+            </div>
+          </button>
+          <button style="padding: 2px 8px;" v-show="tagsNeedSave">
+            <div class="row" style="color: var(--color-text);">
+              Save
+              <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
             </div>
           </button>
         </div>

@@ -7,7 +7,7 @@ mod models;
 
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::{DzrsTrack, DzrsTracks, FromWithConfig};
+use models::dzrs_tracks::{DzrsTracks, FromWithConfig};
 use models::dzrs_types::NotificationAdd;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
@@ -28,29 +28,12 @@ async fn get_dzrs_tracks(
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<DzrsTracks, ()> {
     let config = configuration.lock().unwrap().clone();
-    let mut guard = dzrs_tracks.lock().unwrap();
-    let mut flacs = guard.clone();
+    let mut flacs = dzrs_tracks.lock().unwrap().clone();
     if clear_stored {
         flacs.clear();
     };
-    for path in paths {
-        if let Some(_) = flacs.get_track(path.clone()) {
-            let updated_track = if get_deezer_tags {
-                DzrsTrack::from_with_deezer(path.clone(), &config)
-            } else {
-                DzrsTrack::from_with_config(path.clone(), &config)
-            };
-            *flacs.get_track_mut(path.clone()).unwrap() = updated_track;
-        } else {
-            let new_track = if get_deezer_tags {
-                DzrsTrack::from_with_deezer(path, &config)
-            } else {
-                DzrsTrack::from_with_config(path, &config)
-            };
-            flacs.add(new_track);
-        }
-    }
-    *guard = flacs.clone();
+    flacs.update(paths, &config, get_deezer_tags).await;
+    *dzrs_tracks.lock().unwrap() = flacs.clone();
     Ok(flacs)
 }
 

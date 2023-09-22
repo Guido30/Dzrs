@@ -160,8 +160,8 @@ pub struct TrackItem {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct AudioInfo {
-    pub replaygain_track_peak: f64,
-    pub replaygain_track_gain: f64,
+    pub replaygain_track_peak: Option<f64>,
+    pub replaygain_track_gain: Option<f64>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
