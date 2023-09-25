@@ -40,7 +40,7 @@ onMounted(async () => {
             .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_directory", msg: err }));
     };
     if (!appConfig._loaded) {
-        globalEmitter.emit("notification-add", { type: "Info", origin: "Config", msg: "Config file could not be loaded!" });
+        globalEmitter.emit("notification-add", { type: "Info", origin: "Config", msg: "Config file could not be loaded! Ignore this message if its the first time running Dzrs" });
     };
 });
 </script>
@@ -146,6 +146,7 @@ body {
 
 input,
 button,
+select,
 .button {
     border-radius: 8px;
     border: 1px solid transparent;
@@ -155,6 +156,13 @@ button,
     background-color: var(--color-bg-1);
     transition: all 0.3s ease;
     box-shadow: 0 2px 2px var(--color-shadow);
+}
+
+select {
+    padding: 0.1em 0.8em;
+    color: var(--color-text);
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .checkbox {

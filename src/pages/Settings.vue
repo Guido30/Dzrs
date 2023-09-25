@@ -4,16 +4,14 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { downloadDir } from "@tauri-apps/api/path";
 import { writeText } from '@tauri-apps/api/clipboard';
-import { IconFolder, IconTextSize, IconCheck, IconFile } from "@tabler/icons-vue";
+import { IconFolder, IconFolderFilled, IconTextSize, IconCheck, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
 import SettingsGroup from "../components/SettingsGroup.vue";
 
-import { appConfig, filterColumnsDownload, globalEmitter } from "../helpers";
+import { appConfig, filterColumnsDownload, globalEmitter, tagSeparators } from "../helpers";
 
 const downloadInputValue = ref(appConfig.downloadPath);
 const fileTemplateInput = ref(null);
 const fileTemplateValue = ref(appConfig.fileTemplate);
-const overwriteDownloadsInput = ref(null);
-const overwriteDownloadsValue = ref(appConfig.overwriteDownloads);
 const localFilesInputValue = ref(appConfig.directoryViewPath);
 
 async function setDownloadPath() {
@@ -41,11 +39,10 @@ async function saveFileTemplate() {
   globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
 }
 
-async function saveOverwriteDownloads() {
-  const value = new String(overwriteDownloadsInput.value.checked)
-  await invoke("update_config", { key: "overwrite_downloads", value: value })
+async function updateConfig(key, value) {
+  await invoke("update_config", { key: key, value: value })
     .then((_) => "")
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveOverwriteDownloads", msg: err }));
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateConfig", msg: err }));
 }
 
 async function copyEventTargetToClipboard(event) {
@@ -72,10 +69,10 @@ async function setLocalFilesPath() {
 
 <template>
   <div class="container">
-    <div class="column">
+    <div class="column" style="overflow-y: auto;">
       <SettingsGroup :body-as-column="true" class="group-download">
         <template #head>
-          <IconFolder size="30" class="icon setting-icon"/>
+          <IconFolderFilled size="30" class="icon setting-icon"/>
           <h1>Download</h1>
         </template>
         <template #body>
@@ -87,8 +84,8 @@ async function setLocalFilesPath() {
             </button>
           </div>
           <div class="row" style="justify-content: flex-start; padding-top: 20px;">
-            <p style="margin-right: 5px;">Overwrite existing files</p>
-            <input @change="saveOverwriteDownloads" type="checkbox" class="checkbox" ref="overwriteDownloadsInput" :checked="overwriteDownloadsValue">
+            <input @input="e => updateConfig('overwrite_downloads', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.overwriteDownloads">
+            <p style="margin-left: 8px;">Overwrite existing files</p>
           </div>
         </template>
       </SettingsGroup>
@@ -113,7 +110,7 @@ async function setLocalFilesPath() {
       </SettingsGroup>
       <SettingsGroup :body-as-column="true" class="group-local-files">
         <template #head>
-          <IconFile size="30" class="icon setting-icon"/>
+          <IconFileFilled size="30" class="icon setting-icon"/>
           <h1>Local Files</h1>
         </template>
         <template #body>
@@ -123,6 +120,158 @@ async function setLocalFilesPath() {
             <button style="margin-left: 15px;" @click="setLocalFilesPath">
               <IconFolder color="var(--color-text)"/>
             </button>
+          </div>
+        </template>
+      </SettingsGroup>
+      <SettingsGroup :body-as-column="true" class="group-tags">
+        <template #head>
+          <IconBookmarksFilled size="30" class="icon setting-icon"/>
+          <h1>Deezer Tags</h1>
+        </template>
+        <template #body>
+          <div class="row" style="flex-grow: 1;">
+            <div class="column" style="flex-basis: 50%; align-self: flex-start;">
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_title', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTitle">
+                <span>Title</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzArtist">
+                <span>Artist</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_album', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbum">
+                <span>Album</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_track_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTrackNumber">
+                <span>Track Number</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_track_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTrackTotal">
+                <span>Track Total</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_disc_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiscNumber">
+                <span>Disc Number</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_disc_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiscTotal">
+                <span>Disc Total</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_album_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbumArtist">
+                <span>Album Artist</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_genre', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzGenre">
+                <span>Genre</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzYear">
+                <span>Year</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_date', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDate">
+                <span>Date</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_itunesadvisory', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzItunesadvisory">
+                <span>Explicit Lyrics</span>
+              </div>
+            </div>
+            <div class="column" style="justify-content: flex-start; align-self: flex-start;">
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_isrc', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzIsrc">
+                <span>ISRC</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_length', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLength">
+                <span>Track Length</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_barcode', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBarcode">
+                <span>Album Barcode (UPC)</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_bpm', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBpm">
+                <span>BPM</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_replaygain_track_gain', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzReplaygainTrackGain">
+                <span>Replay Gain</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_label', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLabel">
+                <span>Label</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLyrics">
+                <span>Lyrics</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_copyright', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzCopyright">
+                <span>Copyright</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_composer', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzComposer">
+                <span>Composer</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_performer', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzPerformer">
+                <span>Performer</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_dz_source_id', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzSourceId">
+                <span>Deezer Song ID</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </SettingsGroup>
+      <SettingsGroup :body-as-column="true" class="group-other">
+        <template #head>
+          <IconList size="30" class="icon setting-icon"/>
+          <h1>Other</h1>
+        </template>
+        <template #body>
+          <div class="row" style="justify-content: start;">
+            <span style="margin-right: 8px;">Tags Separator</span>
+            <!-- <input @change="e => updateConfig('tag_separator', e.target.value)" type="select" :value="appConfig.tagSeparator"> -->
+            <select name="select-tag-separator" @change="e => updateConfig('tag_separator', e.target.value)">
+              <option v-for="(sep, i) in tagSeparators" :key="i" :value="sep">"{{ sep }}"</option> <!-- TODO NEED TO LOAD THE DEFAULT VALUE OF THE SELECTION -->
+            </select>
+          </div>
+          <p style="text-align: start;">Add padding to the following tags</p>
+          <div class="row" style="justify-content: start;">
+            <div class="column" style="align-items: start; flex-basis: 50%; gap: 4px;">
+              <div class="row">
+                <input @input="e => updateConfig('tag_pad_track', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadTrack">
+                <span>Track</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_pad_track_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadTrackTotal">
+                <span>Track Total</span>
+              </div>
+              <div class="row">
+                <span style="margin-right: 8px;">Character</span>
+                <input @change="e => updateConfig('tag_pad_track_char', e.target.value)" type="text" maxlength="1" class="input-number" :value="appConfig.tagPadTrackChar">
+              </div>
+            </div>
+            <div class="column" style="align-items: start; gap: 4px;">
+              <div class="row">
+                <input @input="e => updateConfig('tag_pad_disc', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDisc">
+                <span>Disc</span>
+              </div>
+              <div class="row">
+                <input @input="e => updateConfig('tag_pad_disc_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDiscTotal">
+                <span>Disc Total</span>
+              </div>
+              <div class="row">
+                <span style="margin-right: 8px;">Character</span>
+                <input @change="e => updateConfig('tag_pad_disc_char', e.target.value)" type="text" maxlength="1" class="input-number" :value="appConfig.tagPadDiscChar">
+              </div>
+            </div>
           </div>
         </template>
       </SettingsGroup>
@@ -175,4 +324,33 @@ h1 {
 .group-local-files {
   text-align: left;
 }
+
+.group-tags .row {
+  justify-content: flex-start;
+}
+
+.group-tags .column .row {
+  align-items: center;
+}
+
+.group-tags .column .row:not(:first-child) {
+  margin-top: 10px;
+}
+
+.group-other .row {
+  align-items: center;
+}
+
+.row input + span {
+  margin-left: 8px;
+}
+
+.input-number {
+  width: 20px;
+  padding: 1px 5px;
+  border: 0px;
+  border-radius: 2px;
+  text-align: center;
+}
+
 </style>

@@ -6,7 +6,7 @@ import { open } from "@tauri-apps/api/dialog";
 import { open as shellOpen } from '@tauri-apps/api/shell';
 import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
 
-import { appConfig, filterColumnsDirView, globalEmitter } from "../helpers";
+import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser } from "../helpers";
 
 const dzrsTracks = ref([{}]);
 const dzrsFiles = ref([{}]);
@@ -38,7 +38,7 @@ async function loadFilesIntoView() {
 }
 
 async function openLocalFilesExplorer() {
-  await invoke("open_explorer", { path: appConfig.directoryViewPath })
+  await openFileBrowser(appConfig.directoryViewPath)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "openLocalFilesExplorer", msg: err }));
 }
 
@@ -292,11 +292,6 @@ onMounted(async () => {
                   <th>Artist</th>
                   <td>{{ hasTags ? activeDzrsTrack.tags.artist : "" }}</td>
                   <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.artist : ''"></td>
-                </tr>
-                <tr>
-                  <th>Artists</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.artists : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.artists : ''"></td>
                 </tr>
                 <tr>
                   <th>Album</th>

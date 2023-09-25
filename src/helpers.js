@@ -136,6 +136,8 @@ export const filterColumnsDirView = ref([
   },
 ]);
 
+export const tagSeparators = [";", "; ", "/", "/ ", " / ", ",", ", ", " , "];
+
 export const appConfig = config;
 export const globalEmitter = mitt();
 

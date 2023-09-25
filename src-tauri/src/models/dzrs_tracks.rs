@@ -1,10 +1,12 @@
 use crate::config::DzrsConfiguration;
 use base64::{engine::general_purpose, Engine as _};
+use deezerapi_rs::models::{api as deezer_api, gw as deezer_gw};
 use deezerapi_rs::Deezer;
 use lofty::ogg::{OggPictureStorage, VorbisComments};
 use lofty::{flac::FlacFile, AudioFile, ParseOptions};
 use lofty::{Accessor, Picture, PictureInformation};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::ops::{Deref, DerefMut};
@@ -24,10 +26,11 @@ pub struct DzrsTracksIterator<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct DzrsTrack {
     pub path: String,
-    pub tags: DzrsTrackTags,
+    pub tags: TrackTags,
     pub pictures: Vec<DzrsTrackPicture>,
-    pub tags_deezer: DzrsTrackTags,
+    pub tags_deezer: TrackTags,
     pub tag_candidates: DzrsTrackTagCandidates,
+    pub tags_to_save: TrackTags,
     pub matched: bool,
     pub fetched: bool,
     pub candidates: bool,
@@ -35,10 +38,9 @@ pub struct DzrsTrack {
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct DzrsTrackTags {
+pub struct TrackTags {
     title: String,
     artist: String,
-    artists: String,
     album: String,
     album_artist: String,
     composer: String,
@@ -131,21 +133,117 @@ impl DzrsTracks {
 
 impl DzrsTrack {
     pub async fn from_with_deezer(path: String, config: &DzrsConfiguration) -> Self {
-        // Read file from given path and its currently stored tags, and try to get tags from deezer, setting the matched to true if a high accuracy match is found
-        let dzrs_track = Self::from_with_config(path, config);
+        // Read file from given path with its stored tags, and get tags from deezer
+        let mut dzrs_track = Self::from_with_config(path, config);
 
         let deezer = Deezer::new();
-        let api_tracks = deezer
+        let track = match deezer
             .search_track(
                 &dzrs_track.tags.title,
                 &dzrs_track.tags.artist,
                 &dzrs_track.tags.album,
                 false,
             )
-            .await;
+            .await
+        {
+            Ok(t) => {
+                dzrs_track.matched = true;
+                dzrs_track.fetched = true;
+                Some(t)
+            }
+            Err(_) => {
+                dzrs_track.fetched = true;
+                None
+            }
+        };
 
-        println!("{:?}", api_tracks);
+        let song = match &track {
+            Some(t) => match deezer.gw_song(t.id).await {
+                Ok(s) => Some(s),
+                Err(_) => None,
+            },
+            None => None,
+        };
+
+        let album = match &track {
+            Some(t) => match deezer.album(t.album.id).await {
+                Ok(a) => Some(a),
+                Err(_) => None,
+            },
+            None => None,
+        };
+
+        let lyrics = match &track {
+            Some(t) => match deezer.gw_lyrics(t.id).await {
+                Ok(l) => Some(l),
+                Err(_) => None,
+            },
+            None => None,
+        };
+
+        let mut tags_deezer = dzrs_track.tags.clone();
+        tags_deezer.update_with_deezer(track, song, album, lyrics, config);
+        dzrs_track.tags_deezer = tags_deezer;
+
+        println!("{:#?}", dzrs_track);
         dzrs_track
+    }
+}
+
+impl TrackTags {
+    fn update_with_deezer(
+        &mut self,
+        track: Option<deezer_api::Track>,
+        song: Option<deezer_gw::Song>,
+        album: Option<deezer_api::MainAlbum>,
+        lyrics: Option<deezer_gw::Lyrics>,
+        config: &DzrsConfiguration,
+    ) {
+        let mut artists: Vec<String> = vec![];
+
+        if let Some(t) = track {
+            self.title = t.title;
+            self.album = t.album.title;
+            self.album_artist = t.artist.name.clone();
+            artists.push(t.artist.name);
+        };
+
+        if let Some(s) = song {
+            let mut _artists = s.artists.clone();
+            _artists.sort_by(|a, b| {
+                a.artists_songs_order
+                    .parse::<u16>()
+                    .unwrap_or_default()
+                    .cmp(&b.artists_songs_order.parse::<u16>().unwrap_or_default())
+            });
+            _artists.iter().for_each(|a| {
+                if !artists.contains(&a.art_name) {
+                    artists.push(a.art_name.clone())
+                }
+            });
+            let contributors = match s.sng_contributors {
+                deezer_gw::SngContributors::SngContributors(contributors) => contributors,
+                deezer_gw::SngContributors::Empty(_) => HashMap::new(),
+            };
+            if let Some(composers) = contributors.get("composer") {
+                self.composer = composers.join(&config.tag_separator)
+            }
+            if let Some(performer) = contributors.get("performer") {
+                self.performer = performer.join(&config.tag_separator)
+            }
+            if let Some(producer) = contributors.get("producer") {
+                self.producer = producer.join(&config.tag_separator)
+            }
+        }
+
+        if let Some(a) = album {
+            let genres: Vec<String> = a.genres.data.iter().map(|g| g.name.clone()).collect();
+            self.genre = genres.join(&config.tag_separator);
+        }
+
+        if let Some(l) = lyrics {}
+
+        self.artist = artists.join(config.tag_separator.as_str());
     }
 }
 
@@ -198,13 +296,14 @@ impl FromWithConfig<String> for DzrsTrack {
             .map(|p| DzrsTrackPicture::from_with_config(p, config))
             .collect();
         let vorbis = flac.vorbis_comments().unwrap().clone();
-        let tags = DzrsTrackTags::from_with_config(vorbis, &config);
+        let tags = TrackTags::from_with_config(vorbis, &config);
         Self {
             path: path,
-            tags,
+            tags: tags.clone(),
             pictures,
-            tags_deezer: DzrsTrackTags::default(),
+            tags_deezer: TrackTags::default(),
             tag_candidates: DzrsTrackTagCandidates::default(),
+            tags_to_save: tags,
             matched: false,
             fetched: false,
             candidates: false,
@@ -212,13 +311,12 @@ impl FromWithConfig<String> for DzrsTrack {
     }
 }
 
-impl FromWithConfig<VorbisComments> for DzrsTrackTags {
+impl FromWithConfig<VorbisComments> for TrackTags {
     fn from_with_config(vorbis: VorbisComments, config: &DzrsConfiguration) -> Self {
         let sep = &config.tag_separator;
         Self {
             title: vorbis.title().unwrap_or_default().to_string(),
             artist: vorbis.get_all("ARTIST").collect::<Vec<&str>>().join(sep),
-            artists: vorbis.get_all("ARTISTS").collect::<Vec<&str>>().join(sep),
             barcode: vorbis.get("BARCODE").unwrap_or_default().to_string(),
             album: vorbis.album().unwrap_or_default().to_string(),
             album_artist: vorbis.get("ALBUMARTIST").unwrap_or_default().to_string(),
