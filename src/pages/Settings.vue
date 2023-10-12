@@ -68,8 +68,8 @@ async function setLocalFilesPath() {
 </script>
 
 <template>
-  <div class="container">
-    <div class="column" style="overflow-y: auto;">
+  <div class="container" style="overflow-y: auto;">
+    <div class="column">
       <SettingsGroup :body-as-column="true" class="group-download">
         <template #head>
           <IconFolderFilled size="30" class="icon setting-icon"/>
@@ -85,7 +85,7 @@ async function setLocalFilesPath() {
           </div>
           <div class="row" style="justify-content: flex-start; padding-top: 20px;">
             <input @input="e => updateConfig('overwrite_downloads', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.overwriteDownloads">
-            <p style="margin-left: 8px;">Overwrite existing files</p>
+            <p style="margin-left: 8px;">Overwrite Existing Files</p>
           </div>
         </template>
       </SettingsGroup>
@@ -236,13 +236,16 @@ async function setLocalFilesPath() {
         </template>
         <template #body>
           <div class="row" style="justify-content: start;">
-            <span style="margin-right: 8px;">Tags Separator</span>
-            <!-- <input @change="e => updateConfig('tag_separator', e.target.value)" type="select" :value="appConfig.tagSeparator"> -->
-            <select name="select-tag-separator" @change="e => updateConfig('tag_separator', e.target.value)">
-              <option v-for="(sep, i) in tagSeparators" :key="i" :value="sep">"{{ sep }}"</option> <!-- TODO NEED TO LOAD THE DEFAULT VALUE OF THE SELECTION -->
+            <span style="margin-right: 8px;">Separate Retrieved Tags Using</span>
+            <select name="select-tag-separator" :value="appConfig.tagSeparator" @change="e => {updateConfig('tag_separator', e.target.value); globalEmitter.emit('instant-notification-add', { type: 'Info', origin: 'Settings', msg: 'Setting Updated!' });}">
+              <option v-for="(sep, i) in tagSeparators" :key="i" :value="sep">"{{ sep }}"</option>
             </select>
           </div>
-          <p style="text-align: start;">Add padding to the following tags</p>
+          <div class="row" style="justify-content: flex-start;">
+            <input @input="e => updateConfig('tag_prefer_sync_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPreferSyncLyrics">
+            <p style="margin-left: 8px;">Prefer Synchronized Lyrics when Available</p>
+          </div>
+          <p style="text-align: start; margin-bottom: 4px; margin-top: 4px;">Add Padding to the Following Tags:</p>
           <div class="row" style="justify-content: start;">
             <div class="column" style="align-items: start; flex-basis: 50%; gap: 4px;">
               <div class="row">

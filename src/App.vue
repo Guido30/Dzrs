@@ -97,7 +97,7 @@ onMounted(async () => {
     border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb {
-    background-color: var(--color-bg-3);
+    background-color: var(--color-accent);
     border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -187,6 +187,16 @@ button:hover {
 
 button {
     cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.icon-loading {
+    animation: icon-loading-anim 1.8s linear infinite;
 }
 
 .v-enter-active,

@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/api/dialog";
 import { open as shellOpen } from '@tauri-apps/api/shell';
-import { IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
+import { IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
 
 import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser } from "../helpers";
 
@@ -27,6 +27,7 @@ const activeDzrsTrack = computed(() => {
 const showFilterMenu = ref(false);
 const currentWatchedPath = ref(appConfig.directoryViewPath);
 const tagsNeedSave = ref(false);
+const tagsFetching = ref(false);
 
 async function loadFilesIntoView() {
   const result = await invoke("watcher_get_files", { path: currentWatchedPath.value })
@@ -117,6 +118,7 @@ async function getDzrsTracks() {
 
 async function getDzrsTracksFromSelection() {
   let flacs;
+  tagsFetching.value = true;
   if (selectedDzrsFilePaths.value.length === 0) {
     flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
   } else {
@@ -128,6 +130,7 @@ async function getDzrsTracksFromSelection() {
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
   dzrsTracks.value = result.items;
   updateDzrsFilesStatus();
+  tagsFetching.value = false;
 };
 
 function updateDzrsFilesStatus() {
@@ -188,10 +191,11 @@ onMounted(async () => {
               <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
             </div>
           </button>
-          <button style="padding: 2px 8px;" @click="getDzrsTracksFromSelection">
+          <button style="padding: 2px 8px;" @click="getDzrsTracksFromSelection" :disabled="tagsFetching">
             <div class="row" style="color: var(--color-text);">
               Fetch
-              <IconClipboardList size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+              <IconClipboardList v-if="!tagsFetching" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+              <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px;"/>
             </div>
           </button>
           <button style="padding: 2px 8px;" v-show="tagsNeedSave">
@@ -226,19 +230,18 @@ onMounted(async () => {
                 <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedDzrsFilePaths.includes(file.path) }">
                   <td><!-- Empty cell reserved for table filter --></td>
                   <td class="img-container">
-                    <IconMusic v-if="['flac', 'mp3'].includes(file.extension)"/>
-                    <IconFile v-else/>
-                    <!-- <img :src="iconPathFromExtension(file.extension)" class="icon"> -->
+                    <IconMusic v-if="['flac', 'mp3'].includes(file.extension)" color="#c9c9c9"/>
+                    <IconFile v-else color="#c9c9c9"/>
                   </td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic;">{{ file.filename }}</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ (file.size / (1024 * 1024)).toFixed(1) }} MB</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">{{ file.extension }}</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">
-                    <IconProgressCheck v-if="file.tagStatus === 'Finalized'"/>
-                    <IconProgressBolt v-else-if="file.tagStatus === 'Matched'"/>
-                    <IconProgressHelp v-else-if="file.tagStatus === 'Successfull'"/>
-                    <IconProgressAlert v-else-if="file.tagStatus === 'Unsuccessfull'"/>
-                    <IconProgress v-else/>
+                    <IconProgressCheck v-if="file.tagStatus === 'Finalized'" color="var(--color-success)"/>
+                    <IconProgressBolt v-else-if="file.tagStatus === 'Matched'" color="#578867"/>
+                    <IconProgressHelp v-else-if="file.tagStatus === 'Successfull'" color="#998f40"/>
+                    <IconProgressAlert v-else-if="file.tagStatus === 'Unsuccessfull'" color="var(--color-error)"/>
+                    <IconProgress v-else color="#8c8c8c"/>
                   </td>
                 </tr>
               </template>
@@ -514,6 +517,10 @@ tbody {
 tbody tr td:nth-child(1) {
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
+}
+
+.tags-panel tr td:nth-child(2) {
+  user-select: text;
 }
 
 tbody tr td:last-child {

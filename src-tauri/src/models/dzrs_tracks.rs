@@ -1,4 +1,5 @@
 use crate::config::DzrsConfiguration;
+use crate::helpers::make_indices_unique;
 use base64::{engine::general_purpose, Engine as _};
 use deezerapi_rs::models::{api as deezer_api, gw as deezer_gw};
 use deezerapi_rs::Deezer;
@@ -237,11 +238,46 @@ impl TrackTags {
         }
 
         if let Some(a) = album {
-            let genres: Vec<String> = a.genres.data.iter().map(|g| g.name.clone()).collect();
+            let mut split_genres: Vec<(usize, String)> = Vec::new();
+            let mut genres: Vec<String> = a
+                .genres
+                .data
+                .clone()
+                .into_iter()
+                .filter(|g| !g.name.contains("/"))
+                .map(|g| g.name)
+                .collect();
+
+            a.genres
+                .data
+                .into_iter()
+                .enumerate()
+                .filter(|(_, g)| g.name.contains("/"))
+                .for_each(|(i, g)| {
+                    let genre_names: Vec<&str> = g.name.split('/').collect();
+                    for genre_name in genre_names {
+                        split_genres.push((i, genre_name.trim().to_string()));
+                    }
+                });
+
+            make_indices_unique(&mut split_genres);
+
+            for (i, g) in split_genres {
+                if !genres.contains(&g) {
+                    genres.insert(i, g);
+                }
+            }
+
             self.genre = genres.join(&config.tag_separator);
         }
 
-        if let Some(l) = lyrics {}
+        if let Some(l) = lyrics {
+            if config.tag_prefer_sync_lyrics.parse().unwrap_or_default() {
+                unimplemented!()
+            } else {
+                self.lyrics = l.lyrics_text
+            }
+        }
 
         self.artist = artists.join(config.tag_separator.as_str());
     }

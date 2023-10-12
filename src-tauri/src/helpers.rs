@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::env::consts::OS;
 use std::path::PathBuf;
@@ -45,5 +46,19 @@ pub fn open_explorer(path: String) -> Result<(), String> {
     match Command::new(program).arg(path).spawn() {
         Ok(_) => Ok(()),
         Err(err) => Err(err.to_string()),
+    }
+}
+
+pub fn make_indices_unique(vec: &mut Vec<(usize, String)>) {
+    let mut index_map: HashMap<usize, usize> = HashMap::new();
+
+    for i in 0..vec.len() {
+        let (current_index, genre) = &mut vec[i];
+        if let Some(new_index) = index_map.get_mut(current_index) {
+            *new_index += 1;
+            *current_index = *new_index;
+        } else {
+            index_map.insert(*current_index, *current_index);
+        }
     }
 }

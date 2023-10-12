@@ -36,7 +36,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="row header-bar" style="margin-bottom: 10px;">
+  <div class="row header-bar">
     <img src="../assets/logox256.png">
     <div class="row header-btns">
         <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main'}">
@@ -51,7 +51,7 @@ onMounted(() => {
         <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About'}">
           <p>About</p>
         </div>
-        <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative;" @click="emitShowNotifications">
+        <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative; margin-left: 30px;" @click="emitShowNotifications">
           <IconLayoutList class="icon"/>
           <div class="notification-dot hidden" ref="notificationDot">
           </div>
@@ -88,15 +88,16 @@ h1 {
 }
 
 .header-btns {
-  gap: 10px;
+  gap: 15px;
   margin-top: auto;
   margin-bottom: auto;
 }
 
 .header-btn {
-  border-radius: 20px;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
   gap: 5px;
-  padding: 10px;
+  padding: 5px;
   padding-left: 15px;
   padding-right: 15px;
   border: 1px solid transparent;
@@ -106,11 +107,12 @@ h1 {
 
 .active {
   background-color: var(--color-hover);
+  border-top: 1px solid var(--color-accent);
 }
 
 .header-btn:hover, .btn-hover {
   background-color: var(--color-hover);
-  border: 1px solid var(--color-accent);
+  border-top: 1px solid var(--color-accent);
 }
 
 .notification-dot {

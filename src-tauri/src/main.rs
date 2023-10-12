@@ -117,17 +117,6 @@ async fn get_config_values(
 }
 
 #[tauri::command]
-async fn get_config(
-    key: String,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<String, String> {
-    match configuration.lock().unwrap().get(key) {
-        Ok(res) => Ok(res),
-        Err(err) => Err(err.to_string()),
-    }
-}
-
-#[tauri::command]
 async fn update_config(
     key: String,
     value: String,
@@ -222,7 +211,6 @@ fn main() {
             watch_directory,
             watcher_get_files,
             get_config_values,
-            get_config,
             update_config,
             open_explorer,
             get_slavart_tracks,

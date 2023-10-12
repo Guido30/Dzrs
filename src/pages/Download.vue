@@ -253,8 +253,4 @@ tbody {
   font-weight: 400;
   user-select: none;
 }
-
-.icon-loading {
-    animation: icon-loading-anim 1.8s linear infinite;
-}
 </style>

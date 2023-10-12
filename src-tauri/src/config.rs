@@ -56,6 +56,7 @@ pub struct DzrsConfiguration {
     pub tag_dz_bpm: String,
     pub tag_dz_replaygain_track_gain: String,
     pub tag_dz_source_id: String,
+    pub tag_prefer_sync_lyrics: String,
 }
 
 impl DzrsConfiguration {
@@ -83,55 +84,6 @@ impl DzrsConfiguration {
         result._loaded = loaded;
         result._created = created;
         result
-    }
-
-    pub fn get(&self, field: String) -> Result<String, Error> {
-        match field.as_str() {
-            "download_path" => Ok(self.download_path.clone()),
-            "file_template" => Ok(self.file_template.clone()),
-            "overwrite_downloads" => Ok(self.overwrite_downloads.clone()),
-            "directory_view_path" => Ok(self.directory_view_path.clone()),
-            "filter_download_genre" => Ok(self.filter_download_genre.clone()),
-            "filter_download_date" => Ok(self.filter_download_date.clone()),
-            "filter_download_composer" => Ok(self.filter_download_composer.clone()),
-            "filter_download_isrc" => Ok(self.filter_download_isrc.clone()),
-            "filter_download_copyright" => Ok(self.filter_download_copyright.clone()),
-            "filter_download_bitdepth" => Ok(self.filter_download_bitdepth.clone()),
-            "filter_download_samplingrate" => Ok(self.filter_download_samplingrate.clone()),
-            "filter_dirview_extension" => Ok(self.filter_dirview_extension.clone()),
-            "tag_pad_track" => Ok(self.tag_pad_track.clone()),
-            "tag_pad_track_total" => Ok(self.tag_pad_track_total.clone()),
-            "tag_pad_track_char" => Ok(self.tag_pad_track_char.clone()),
-            "tag_pad_disc" => Ok(self.tag_pad_disc.clone()),
-            "tag_pad_disc_total" => Ok(self.tag_pad_disc_total.clone()),
-            "tag_pad_disc_char" => Ok(self.tag_pad_disc_char.clone()),
-            "tag_separator" => Ok(self.tag_separator.clone()),
-            "tag_dz_title" => Ok(self.tag_dz_title.clone()),
-            "tag_dz_artist" => Ok(self.tag_dz_artist.clone()),
-            "tag_dz_album" => Ok(self.tag_dz_album.clone()),
-            "tag_dz_album_artist" => Ok(self.tag_dz_album_artist.clone()),
-            "tag_dz_composer" => Ok(self.tag_dz_composer.clone()),
-            "tag_dz_performer" => Ok(self.tag_dz_performer.clone()),
-            "tag_dz_producer" => Ok(self.tag_dz_producer.clone()),
-            "tag_dz_genre" => Ok(self.tag_dz_genre.clone()),
-            "tag_dz_lyrics" => Ok(self.tag_dz_lyrics.clone()),
-            "tag_dz_itunesadvisory" => Ok(self.tag_dz_itunesadvisory.clone()),
-            "tag_dz_length" => Ok(self.tag_dz_length.clone()),
-            "tag_dz_copyright" => Ok(self.tag_dz_copyright.clone()),
-            "tag_dz_track_number" => Ok(self.tag_dz_track_number.clone()),
-            "tag_dz_track_total" => Ok(self.tag_dz_track_total.clone()),
-            "tag_dz_disc_number" => Ok(self.tag_dz_disc_number.clone()),
-            "tag_dz_disc_total" => Ok(self.tag_dz_disc_total.clone()),
-            "tag_dz_date" => Ok(self.tag_dz_date.clone()),
-            "tag_dz_year" => Ok(self.tag_dz_year.clone()),
-            "tag_dz_label" => Ok(self.tag_dz_label.clone()),
-            "tag_dz_barcode" => Ok(self.tag_dz_barcode.clone()),
-            "tag_dz_isrc" => Ok(self.tag_dz_isrc.clone()),
-            "tag_dz_bpm" => Ok(self.tag_dz_bpm.clone()),
-            "tag_dz_replaygain_track_gain" => Ok(self.tag_dz_replaygain_track_gain.clone()),
-            "tag_dz_source_id" => Ok(self.tag_dz_source_id.clone()),
-            _ => Err(Error("Field not found in config!".into())),
-        }
     }
 
     pub fn update(&mut self, field: String, value: String) {
@@ -179,6 +131,7 @@ impl DzrsConfiguration {
             "tag_dz_bpm" => self.tag_dz_bpm = value,
             "tag_dz_replaygain_track_gain" => self.tag_dz_replaygain_track_gain = value,
             "tag_dz_source_id" => self.tag_dz_source_id = value,
+            "tag_prefer_sync_lyrics" => self.tag_prefer_sync_lyrics = value,
             _ => (),
         }
     }
@@ -240,6 +193,7 @@ impl Default for DzrsConfiguration {
             tag_dz_bpm: "true".into(),
             tag_dz_replaygain_track_gain: "true".into(),
             tag_dz_source_id: "true".into(),
+            tag_prefer_sync_lyrics: "true".into(),
         }
     }
 }
