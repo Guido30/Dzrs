@@ -27,7 +27,7 @@ async fn get_dzrs_tracks(
     dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<DzrsTracks, ()> {
-    let config = configuration.lock().unwrap().clone();
+    let config = configuration.lock().unwrap().clone().parsed();
     let mut flacs = dzrs_tracks.lock().unwrap().clone();
     if clear_stored {
         flacs.clear();

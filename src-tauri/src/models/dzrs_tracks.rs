@@ -1,4 +1,4 @@
-use crate::config::DzrsConfiguration;
+use crate::config::DzrsConfigurationParsed;
 use crate::helpers::make_indices_unique;
 use base64::{engine::general_purpose, Engine as _};
 use deezerapi_rs::models::{api as deezer_api, gw as deezer_gw};
@@ -106,7 +106,7 @@ impl DzrsTracks {
     pub async fn update(
         &mut self,
         paths: Vec<String>,
-        config: &DzrsConfiguration,
+        config: &DzrsConfigurationParsed,
         fetch_deezer_tags: bool,
     ) {
         for path in paths {
@@ -133,7 +133,7 @@ impl DzrsTracks {
 }
 
 impl DzrsTrack {
-    pub async fn from_with_deezer(path: String, config: &DzrsConfiguration) -> Self {
+    pub async fn from_with_deezer(path: String, config: &DzrsConfigurationParsed) -> Self {
         // Read file from given path with its stored tags, and get tags from deezer
         let mut dzrs_track = Self::from_with_config(path, config);
 
@@ -186,7 +186,6 @@ impl DzrsTrack {
         tags_deezer.update_with_deezer(track, song, album, lyrics, config);
         dzrs_track.tags_deezer = tags_deezer;
 
-        println!("{:#?}", dzrs_track);
         dzrs_track
     }
 }
@@ -198,14 +197,20 @@ impl TrackTags {
         song: Option<deezer_gw::Song>,
         album: Option<deezer_api::MainAlbum>,
         lyrics: Option<deezer_gw::Lyrics>,
-        config: &DzrsConfiguration,
+        config: &DzrsConfigurationParsed,
     ) {
         let mut artists: Vec<String> = vec![];
 
         if let Some(t) = track {
-            self.title = t.title;
-            self.album = t.album.title;
-            self.album_artist = t.artist.name.clone();
+            if config.tag_dz_title {
+                self.title = t.title;
+            };
+            if config.tag_dz_album {
+                self.album = t.album.title;
+            };
+            if config.tag_dz_album_artist {
+                self.album_artist = t.artist.name.clone();
+            };
             artists.push(t.artist.name);
         };
 
@@ -226,60 +231,82 @@ impl TrackTags {
                 deezer_gw::SngContributors::SngContributors(contributors) => contributors,
                 deezer_gw::SngContributors::Empty(_) => HashMap::new(),
             };
-            if let Some(composers) = contributors.get("composer") {
-                self.composer = composers.join(&config.tag_separator)
+            if config.tag_dz_composer {
+                if let Some(composers) = contributors.get("composer") {
+                    self.composer = composers.join(&config.tag_separator)
+                }
             }
-            if let Some(performer) = contributors.get("performer") {
-                self.performer = performer.join(&config.tag_separator)
+            if config.tag_dz_performer {
+                if let Some(performer) = contributors.get("performer") {
+                    self.performer = performer.join(&config.tag_separator)
+                }
             }
-            if let Some(producer) = contributors.get("producer") {
-                self.producer = producer.join(&config.tag_separator)
+            if config.tag_dz_producer {
+                if let Some(producer) = contributors.get("producer") {
+                    self.producer = producer.join(&config.tag_separator)
+                }
             }
         }
 
         if let Some(a) = album {
-            let mut split_genres: Vec<(usize, String)> = Vec::new();
-            let mut genres: Vec<String> = a
-                .genres
-                .data
-                .clone()
-                .into_iter()
-                .filter(|g| !g.name.contains("/"))
-                .map(|g| g.name)
-                .collect();
+            if config.tag_dz_genre {
+                let mut split_genres: Vec<(usize, String)> = Vec::new();
+                let mut genres: Vec<String> = a
+                    .genres
+                    .data
+                    .clone()
+                    .into_iter()
+                    .filter(|g| !g.name.contains("/"))
+                    .map(|g| g.name)
+                    .collect();
 
-            a.genres
-                .data
-                .into_iter()
-                .enumerate()
-                .filter(|(_, g)| g.name.contains("/"))
-                .for_each(|(i, g)| {
-                    let genre_names: Vec<&str> = g.name.split('/').collect();
-                    for genre_name in genre_names {
-                        split_genres.push((i, genre_name.trim().to_string()));
+                a.genres
+                    .data
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, g)| g.name.contains("/"))
+                    .for_each(|(i, g)| {
+                        let genre_names: Vec<&str> = g.name.split('/').collect();
+                        for genre_name in genre_names {
+                            split_genres.push((i, genre_name.trim().to_string()));
+                        }
+                    });
+
+                make_indices_unique(&mut split_genres);
+
+                for (i, g) in split_genres {
+                    if !genres.contains(&g) {
+                        genres.insert(i, g);
                     }
-                });
-
-            make_indices_unique(&mut split_genres);
-
-            for (i, g) in split_genres {
-                if !genres.contains(&g) {
-                    genres.insert(i, g);
                 }
-            }
 
-            self.genre = genres.join(&config.tag_separator);
+                self.genre = genres.join(&config.tag_separator);
+            }
         }
 
         if let Some(l) = lyrics {
-            if config.tag_prefer_sync_lyrics.parse().unwrap_or_default() {
-                unimplemented!()
-            } else {
-                self.lyrics = l.lyrics_text
+            if config.tag_dz_lyrics {
+                if config.tag_prefer_sync_lyrics && l.lyrics_sync_json.is_some() {
+                    let mut lines = Vec::new();
+                    for l_line in l.lyrics_sync_json.unwrap().into_iter() {
+                        let mut line = String::new();
+                        if let Some(mut t) = l_line.lrc_timestamp {
+                            t.push(' ');
+                            line.push_str(t.as_str());
+                        }
+                        line.push_str(l_line.line.as_str());
+                        lines.push(line);
+                    }
+                    self.lyrics = lines.join("\r\n");
+                } else {
+                    self.lyrics = l.lyrics_text
+                }
             }
         }
 
-        self.artist = artists.join(config.tag_separator.as_str());
+        if config.tag_dz_artist {
+            self.artist = artists.join(config.tag_separator.as_str());
+        }
     }
 }
 
@@ -287,11 +314,11 @@ pub trait FromWithConfig<T>
 where
     Self: Sized,
 {
-    fn from_with_config(value: T, config: &DzrsConfiguration) -> Self;
+    fn from_with_config(value: T, config: &DzrsConfigurationParsed) -> Self;
 }
 
 impl FromWithConfig<Vec<String>> for DzrsTracks {
-    fn from_with_config(paths: Vec<String>, config: &DzrsConfiguration) -> Self {
+    fn from_with_config(paths: Vec<String>, config: &DzrsConfigurationParsed) -> Self {
         // Filter the files, only flacs are allowed to be parsed
         let flacs_only: Vec<String> = paths
             .into_iter()
@@ -315,7 +342,7 @@ impl FromWithConfig<Vec<String>> for DzrsTracks {
 }
 
 impl FromWithConfig<String> for DzrsTrack {
-    fn from_with_config(path: String, config: &DzrsConfiguration) -> Self {
+    fn from_with_config(path: String, config: &DzrsConfigurationParsed) -> Self {
         // Read file from given path and its currently stored tags
         let file = match File::open(path.clone()) {
             Ok(f) => f,
@@ -348,7 +375,7 @@ impl FromWithConfig<String> for DzrsTrack {
 }
 
 impl FromWithConfig<VorbisComments> for TrackTags {
-    fn from_with_config(vorbis: VorbisComments, config: &DzrsConfiguration) -> Self {
+    fn from_with_config(vorbis: VorbisComments, config: &DzrsConfigurationParsed) -> Self {
         let sep = &config.tag_separator;
         Self {
             title: vorbis.title().unwrap_or_default().to_string(),
@@ -398,7 +425,10 @@ impl FromWithConfig<VorbisComments> for TrackTags {
 }
 
 impl FromWithConfig<&(Picture, PictureInformation)> for DzrsTrackPicture {
-    fn from_with_config(value: &(Picture, PictureInformation), config: &DzrsConfiguration) -> Self {
+    fn from_with_config(
+        value: &(Picture, PictureInformation),
+        config: &DzrsConfigurationParsed,
+    ) -> Self {
         let data = value.0.data();
         let b64 = general_purpose::STANDARD.encode(data);
         let pic_type = format!("{:?}", value.0.pic_type());

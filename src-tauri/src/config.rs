@@ -59,6 +59,57 @@ pub struct DzrsConfiguration {
     pub tag_prefer_sync_lyrics: String,
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct DzrsConfigurationParsed {
+    _path: PathBuf,
+    _loaded: bool,
+    _created: bool,
+    pub download_path: String,
+    pub file_template: String,
+    pub overwrite_downloads: bool,
+    pub directory_view_path: String,
+    pub filter_download_genre: bool,
+    pub filter_download_date: bool,
+    pub filter_download_composer: bool,
+    pub filter_download_isrc: bool,
+    pub filter_download_copyright: bool,
+    pub filter_download_bitdepth: bool,
+    pub filter_download_samplingrate: bool,
+    pub filter_dirview_extension: bool,
+    pub tag_pad_track: bool,
+    pub tag_pad_track_total: bool,
+    pub tag_pad_track_char: char,
+    pub tag_pad_disc: bool,
+    pub tag_pad_disc_total: bool,
+    pub tag_pad_disc_char: char,
+    pub tag_separator: String,
+    pub tag_dz_title: bool,
+    pub tag_dz_artist: bool,
+    pub tag_dz_album: bool,
+    pub tag_dz_album_artist: bool,
+    pub tag_dz_composer: bool,
+    pub tag_dz_performer: bool,
+    pub tag_dz_producer: bool,
+    pub tag_dz_genre: bool,
+    pub tag_dz_lyrics: bool,
+    pub tag_dz_itunesadvisory: bool,
+    pub tag_dz_length: bool,
+    pub tag_dz_copyright: bool,
+    pub tag_dz_track_number: bool,
+    pub tag_dz_track_total: bool,
+    pub tag_dz_disc_number: bool,
+    pub tag_dz_disc_total: bool,
+    pub tag_dz_date: bool,
+    pub tag_dz_year: bool,
+    pub tag_dz_label: bool,
+    pub tag_dz_barcode: bool,
+    pub tag_dz_isrc: bool,
+    pub tag_dz_bpm: bool,
+    pub tag_dz_replaygain_track_gain: bool,
+    pub tag_dz_source_id: bool,
+    pub tag_prefer_sync_lyrics: bool,
+}
+
 impl DzrsConfiguration {
     pub fn from_file(path: PathBuf) -> Self {
         let mut result = DzrsConfiguration::default();
@@ -141,6 +192,61 @@ impl DzrsConfiguration {
         let mut file = File::create(&self._path)?;
         file.write_all(json_string.as_bytes())?;
         Ok(())
+    }
+
+    pub fn parsed(&self) -> DzrsConfigurationParsed {
+        DzrsConfigurationParsed {
+            _path: self._path.clone(),
+            _loaded: self._loaded,
+            _created: self._created,
+            download_path: self.download_path.clone(),
+            file_template: self.file_template.clone(),
+            overwrite_downloads: self.overwrite_downloads.parse().unwrap_or(true),
+            directory_view_path: self.directory_view_path.clone(),
+            filter_download_genre: self.filter_download_genre.parse().unwrap_or(false),
+            filter_download_date: self.filter_download_date.parse().unwrap_or(false),
+            filter_download_composer: self.filter_download_composer.parse().unwrap_or(false),
+            filter_download_isrc: self.filter_download_isrc.parse().unwrap_or(false),
+            filter_download_copyright: self.filter_download_copyright.parse().unwrap_or(false),
+            filter_download_bitdepth: self.filter_download_bitdepth.parse().unwrap_or(false),
+            filter_download_samplingrate: self
+                .filter_download_samplingrate
+                .parse()
+                .unwrap_or(false),
+            filter_dirview_extension: self.filter_dirview_extension.parse().unwrap_or(false),
+            tag_pad_track: self.tag_pad_track.parse().unwrap_or(false),
+            tag_pad_track_total: self.tag_pad_track_total.parse().unwrap_or(false),
+            tag_pad_track_char: self.tag_pad_track_char.parse().unwrap_or('0'),
+            tag_pad_disc: self.tag_pad_disc.parse().unwrap_or(false),
+            tag_pad_disc_total: self.tag_pad_disc_total.parse().unwrap_or(false),
+            tag_pad_disc_char: self.tag_pad_disc_char.parse().unwrap_or('0'),
+            tag_separator: self.tag_separator.clone(),
+            tag_dz_title: self.tag_dz_title.parse().unwrap_or(true),
+            tag_dz_artist: self.tag_dz_artist.parse().unwrap_or(true),
+            tag_dz_album: self.tag_dz_album.parse().unwrap_or(true),
+            tag_dz_album_artist: self.tag_dz_album_artist.parse().unwrap_or(true),
+            tag_dz_composer: self.tag_dz_composer.parse().unwrap_or(true),
+            tag_dz_performer: self.tag_dz_performer.parse().unwrap_or(true),
+            tag_dz_producer: self.tag_dz_producer.parse().unwrap_or(true),
+            tag_dz_genre: self.tag_dz_genre.parse().unwrap_or(true),
+            tag_dz_lyrics: self.tag_dz_lyrics.parse().unwrap_or(true),
+            tag_dz_itunesadvisory: self.tag_dz_itunesadvisory.parse().unwrap_or(true),
+            tag_dz_length: self.tag_dz_length.parse().unwrap_or(true),
+            tag_dz_copyright: self.tag_dz_copyright.parse().unwrap_or(true),
+            tag_dz_track_number: self.tag_dz_track_number.parse().unwrap_or(true),
+            tag_dz_track_total: self.tag_dz_track_total.parse().unwrap_or(true),
+            tag_dz_disc_number: self.tag_dz_disc_number.parse().unwrap_or(true),
+            tag_dz_disc_total: self.tag_dz_disc_total.parse().unwrap_or(true),
+            tag_dz_date: self.tag_dz_date.parse().unwrap_or(true),
+            tag_dz_year: self.tag_dz_year.parse().unwrap_or(true),
+            tag_dz_label: self.tag_dz_label.parse().unwrap_or(true),
+            tag_dz_barcode: self.tag_dz_barcode.parse().unwrap_or(true),
+            tag_dz_isrc: self.tag_dz_isrc.parse().unwrap_or(true),
+            tag_dz_bpm: self.tag_dz_bpm.parse().unwrap_or(true),
+            tag_dz_replaygain_track_gain: self.tag_dz_replaygain_track_gain.parse().unwrap_or(true),
+            tag_dz_source_id: self.tag_dz_source_id.parse().unwrap_or(true),
+            tag_prefer_sync_lyrics: self.tag_prefer_sync_lyrics.parse().unwrap_or(true),
+        }
     }
 }
 
