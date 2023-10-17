@@ -184,7 +184,8 @@ impl DzrsTrack {
 
         let mut tags_deezer = dzrs_track.tags.clone();
         tags_deezer.update_with_deezer(track, song, album, lyrics, config);
-        dzrs_track.tags_deezer = tags_deezer;
+        dzrs_track.tags_deezer = tags_deezer.clone();
+        dzrs_track.tags_to_save = tags_deezer;
 
         dzrs_track
     }

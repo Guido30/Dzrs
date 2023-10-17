@@ -136,6 +136,8 @@ export const filterColumnsDirView = ref([
   },
 ]);
 
+export const emptyTrack = await invoke("get_empty_track").then((res) => res);
+
 export const tagSeparators = [";", "; ", "/", "/ ", " / ", ",", ", ", " , "];
 
 export const appConfig = config;

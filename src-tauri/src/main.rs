@@ -7,7 +7,7 @@ mod models;
 
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::{DzrsTracks, FromWithConfig};
+use models::dzrs_tracks::{DzrsTrack, DzrsTracks, FromWithConfig};
 use models::dzrs_types::NotificationAdd;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
@@ -18,6 +18,12 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, Window};
+
+#[tauri::command]
+async fn get_empty_track() -> Result<DzrsTrack, ()> {
+    let track = DzrsTrack::default();
+    Ok(track)
+}
 
 #[tauri::command]
 async fn get_dzrs_tracks(
@@ -216,6 +222,7 @@ fn main() {
             get_slavart_tracks,
             download_track,
             get_dzrs_tracks,
+            get_empty_track,
         ])
         .run(tauri::generate_context!())
         .expect("error while running dzrs");

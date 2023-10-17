@@ -1,12 +1,11 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, onBeforeMount } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/api/dialog";
-import { open as shellOpen } from '@tauri-apps/api/shell';
 import { IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
 
-import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser } from "../helpers";
+import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser, emptyTrack } from "../helpers";
 
 const dzrsTracks = ref([{}]);
 const dzrsFiles = ref([{}]);
@@ -16,13 +15,11 @@ const activeDzrsTrack = computed(() => {
   if (activeDzrsFilePath.value) {
     const track = dzrsTracks.value.find((track) => track.path === activeDzrsFilePath.value);
     if (track) {
-      return track
-    } else {
-      return false
+      return track;
     };
-  } else {
-    return false
+    return emptyTrack;
   };
+  return emptyTrack;
 });
 const showFilterMenu = ref(false);
 const currentWatchedPath = ref(appConfig.directoryViewPath);
@@ -263,7 +260,7 @@ onMounted(async () => {
       <div class="frame row" style="gap: 4px;">
         <div class="image-tag column">
           <div class="column">
-            <div v-if="activeDzrsTrack" v-for="picture in activeDzrsTrack.pictures">
+            <div v-if="activeDzrsTrack !== emptyTrack" v-for="picture in activeDzrsTrack.pictures">
               <img :src="`data:image/png;base64, ${picture.b64}`" style="border-radius: 5%;">
               <p>{{ picture.picType }}</p>
               <p>{{ picture.description }}</p>
@@ -285,156 +282,156 @@ onMounted(async () => {
                   <th>Future Value</th>
                 </tr>
               </thead>
-              <tbody :set="hasTags = activeDzrsTrack.hasOwnProperty('tags') ? true : false">
+              <tbody>
                 <tr>
                   <th>Title</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.title : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.title : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.title }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.title !== activeDzrsTrack.tags.title}" v-model="activeDzrsTrack.tagsToSave.title"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Artist</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.artist : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.artist : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.artist }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.artist !== activeDzrsTrack.tags.artist}" v-model="activeDzrsTrack.tagsToSave.artist"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Album</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.album : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.album : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.album }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.album !== activeDzrsTrack.tags.album}" v-model="activeDzrsTrack.tagsToSave.album"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Album Artist</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.albumArtist : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.albumArtist : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.albumArtist }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.albumArtist !== activeDzrsTrack.tags.albumArtist}" v-model="activeDzrsTrack.tagsToSave.albumArtist"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Composer</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.composer : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.composer : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.composer }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.composer !== activeDzrsTrack.tags.composer}" v-model="activeDzrsTrack.tagsToSave.composer"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Performer</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.performer : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.performer : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.performer }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.performer !== activeDzrsTrack.tags.performer}" v-model="activeDzrsTrack.tagsToSave.performer"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Producer</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.producer : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.producer : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.producer }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.producer !== activeDzrsTrack.tags.producer}" v-model="activeDzrsTrack.tagsToSave.producer"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Genre</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.genre : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.genre : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.genre }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.genre !== activeDzrsTrack.tags.genre}" v-model="activeDzrsTrack.tagsToSave.genre"></textarea></div></td>
                 </tr>
-                <tr>
+                <tr style="height: 300px;">
                   <th>Lyrics</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.lyrics : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.lyrics : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.lyrics }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.lyrics !== activeDzrsTrack.tags.lyrics}" v-model="activeDzrsTrack.tagsToSave.lyrics"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Copyright</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.copyright : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.copyright : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.copyright }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.copyright !== activeDzrsTrack.tags.copyright}" v-model="activeDzrsTrack.tagsToSave.copyright"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Description</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.description : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.description : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.description }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.description !== activeDzrsTrack.tags.description}" v-model="activeDzrsTrack.tagsToSave.description"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Track Number</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.trackNumber : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.trackNumber : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.trackNumber }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.trackNumber !== activeDzrsTrack.tags.trackNumber}" v-model="activeDzrsTrack.tagsToSave.trackNumber"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Total Tracks</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.trackTotal : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.trackTotal : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.trackTotal }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.trackTotal !== activeDzrsTrack.tags.trackTotal}" v-model="activeDzrsTrack.tagsToSave.trackTotal"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Disc Number</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.discNumber : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.discNumber : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.discNumber }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.discNumber !== activeDzrsTrack.tags.discNumber}" v-model="activeDzrsTrack.tagsToSave.discNumber"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Total Discs</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.discTotal : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.discTotal : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.discTotal }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.discTotal !== activeDzrsTrack.tags.discTotal}" v-model="activeDzrsTrack.tagsToSave.discTotal"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Length</th>
-                  <td></td>
-                  <td><input type="text"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly></textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Date</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.date : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.date : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.date }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.date !== activeDzrsTrack.tags.date}" v-model="activeDzrsTrack.tagsToSave.date"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Year</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.year : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.year : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.year }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.year !== activeDzrsTrack.tags.year}" v-model="activeDzrsTrack.tagsToSave.year"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Original Date</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.originalDate : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.originalDate : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.originalDate }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.originalDate !== activeDzrsTrack.tags.originalDate}" v-model="activeDzrsTrack.tagsToSave.originalDate"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Original Year</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.originalYear : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.originalYear : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.originalYear }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.originalYear !== activeDzrsTrack.tags.originalYear}" v-model="activeDzrsTrack.tagsToSave.originalYear"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Comment</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.comment : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.comment : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.comment }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.comment !== activeDzrsTrack.tags.comment}" v-model="activeDzrsTrack.tagsToSave.comment"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Label</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.label : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.label : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.label }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.label !== activeDzrsTrack.tags.label}" v-model="activeDzrsTrack.tagsToSave.label"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Barcode</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.barcode : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.barcode : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.barcode }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.barcode !== activeDzrsTrack.tags.barcode}" v-model="activeDzrsTrack.tagsToSave.barcode"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>ISRC</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.isrc : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.isrc : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.isrc }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.isrc !== activeDzrsTrack.tags.isrc}" v-model="activeDzrsTrack.tagsToSave.isrc"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>BPM</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.bpm : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.bpm : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.bpm }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.bpm !== activeDzrsTrack.tags.bpm}" v-model="activeDzrsTrack.tagsToSave.bpm"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Replaygain Track Gain</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.replaygainTrackGain : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainTrackGain : ''"></td>
+                  <th>RG Track Gain</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainTrackGain }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainTrackGain !== activeDzrsTrack.tags.replaygainTrackGain}" v-model="activeDzrsTrack.tagsToSave.replaygainTrackGain"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Replaygain Track Peak</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.replaygainTrackPeak : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainTrackPeak : ''"></td>
+                  <th>RG Track Peak</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainTrackPeak }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainTrackPeak !== activeDzrsTrack.tags.replaygainTrackPeak}" v-model="activeDzrsTrack.tagsToSave.replaygainTrackPeak"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Replaygain Album Gain</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.replaygainAlbumGain : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainAlbumGain : ''"></td>
+                  <th>RG Album Gain</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainAlbumGain }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainAlbumGain !== activeDzrsTrack.tags.replaygainAlbumGain}" v-model="activeDzrsTrack.tagsToSave.replaygainAlbumGain"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Replaygain Album Peak</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.replaygainAlbumPeak : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.replaygainAlbumPeak : ''"></td>
+                  <th>RG Album Peak</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainAlbumPeak }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainAlbumPeak !== activeDzrsTrack.tags.replaygainAlbumPeak}" v-model="activeDzrsTrack.tagsToSave.replaygainAlbumPeak"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Encoder</th>
-                  <td>{{ hasTags ? activeDzrsTrack.tags.encoder : "" }}</td>
-                  <td><input type="text" :value="hasTags ? activeDzrsTrack.tagsDeezer.encoder : ''"></td>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.encoder }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.encoder !== activeDzrsTrack.tags.encoder}" v-model="activeDzrsTrack.tagsToSave.encoder"></textarea></div></td>
                 </tr>
               </tbody>
             </table>
@@ -502,33 +499,33 @@ p {
   margin-bottom: auto;
 }
 
-table {
+.directory-panel table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0px 4px;
   user-select: none;
 }
 
-tbody {
+.directory-panel tbody {
   font-size: 0.95em;
   font-weight: 300;
 }
 
-tbody tr td:nth-child(1) {
+.directory-panel tbody tr td:nth-child(1) {
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
+}
+
+.directory-panel tbody tr td:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .tags-panel tr td:nth-child(2) {
   user-select: text;
 }
 
-tbody tr td:last-child {
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
-}
-
-tbody tr:hover, .selected-file {
+.directory-panel tbody tr:hover, .tags-panel tbody tr:hover, .selected-file {
   background-color: var(--color-hover);
 }
 
@@ -547,22 +544,54 @@ tbody tr:hover, .selected-file {
   text-wrap: nowrap;
 }
 
-tbody td:not(:last-child) {
-  border-right: 1px solid var(--color-hover);
+.tags-panel tbody tr td {
+  position: relative;
 }
 
-.tags-panel tbody input {
+.tags-panel tbody tr td div {
+  position: absolute;
+  display: inline-block;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding-top: 4px;
+  padding-bottom: 8px;
+  padding-left: 4px;
+  padding-right: 8px;
+}
+
+.tags-panel tbody textarea {
   width: 100%;
+  height: 100%;
+  background-color: var(--color-bg-1);
   border-radius: unset;
   border: unset;
-  padding: 1px 0px;
   font-size: unset;
   font-family: inherit;
-  box-shadow: unset;
+  resize:none;
+}
+
+.tags-panel tbody textarea:focus {
+  outline: none;
+}
+
+.tags-panel tbody textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tags-panel tbody textarea::-webkit-scrollbar-thumb {
+    border-radius: 2px;
 }
 
 .tags-panel table {
   table-layout: fixed;
+  padding-right: 5px;
+  border-spacing: 0px 0px;
+}
+
+.tags-panel table tbody tr {
+  height: 35px;
 }
 
 .img-container, .img-container * {
@@ -582,6 +611,10 @@ tbody td:not(:last-child) {
 .table-filter-btn:hover {
   border: 1px solid var(--color-accent);
   background-color: var(--color-hover);
+}
+
+.tag-yellow-text {
+  color: #998f40;
 }
 
 .expanded {
