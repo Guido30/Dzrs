@@ -2,8 +2,9 @@
 import { ref, onMounted, computed, onBeforeMount } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/api/dialog";
-import { IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
+import { open, confirm } from "@tauri-apps/api/dialog";
+import { isEqual } from 'lodash';
+import { IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
 
 import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser, emptyTrack } from "../helpers";
 
@@ -11,6 +12,9 @@ const dzrsTracks = ref([{}]);
 const dzrsFiles = ref([{}]);
 const selectedDzrsFilePaths = ref([]);
 const activeDzrsFilePath = computed(() => selectedDzrsFilePaths.value.length >= 1 ? selectedDzrsFilePaths.value[selectedDzrsFilePaths.value.length - 1] : false);
+const showFilterMenu = ref(false);
+const currentWatchedPath = ref(appConfig.directoryViewPath);
+const tagsFetching = ref(false);
 const activeDzrsTrack = computed(() => {
   if (activeDzrsFilePath.value) {
     const track = dzrsTracks.value.find((track) => track.path === activeDzrsFilePath.value);
@@ -21,10 +25,14 @@ const activeDzrsTrack = computed(() => {
   };
   return emptyTrack;
 });
-const showFilterMenu = ref(false);
-const currentWatchedPath = ref(appConfig.directoryViewPath);
-const tagsNeedSave = ref(false);
-const tagsFetching = ref(false);
+const tagsNeedSave = computed(() => {
+  const found = dzrsTracks.value.find((t) => !isEqual(t.tags, t.tagsToSave));
+  if (found) {
+    return true;
+  } else {
+    return false;
+  };
+});
 
 async function loadFilesIntoView() {
   const result = await invoke("watcher_get_files", { path: currentWatchedPath.value })
@@ -47,7 +55,7 @@ async function updateViewPath() {
   if (path !== null) {
     currentWatchedPath.value = path;
     await loadFilesIntoView();
-    await getDzrsTracks();
+    await getAllDzrsTracks();
     await invoke("watch_directory", { path: path })
       .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
   };
@@ -103,14 +111,26 @@ async function saveFilterColumn(filterColumnDirView) {
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
 
-async function getDzrsTracks() {
+async function getAllDzrsTracks() {
   const flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
   const flac_paths = flacs.map((f) => f.path);
-  const result = await invoke("get_dzrs_tracks", { paths: flac_paths, clearStored: true, getDeezerTags: false })
+  const result = await invoke("get_all_dzrs_tracks", { paths: flac_paths, clearStored: true, getDeezerTags: false })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
   dzrsTracks.value = result.items;
   updateDzrsFilesStatus();
+};
+
+async function updateDzrsTracks(paths) {
+  const tracks = await invoke("update_dzrs_tracks", { paths: paths, getDeezerTags: false })
+    .then((res) => res)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateDzrsTracks", msg: err }));
+  tracks.forEach((t) => {
+    const i = dzrsTracks.value.findIndex((_t) => _t.path === t.path);
+    if (i !== -1) {
+      dzrsTracks.value[i] = t;
+    };
+  });
 };
 
 async function getDzrsTracksFromSelection() {
@@ -122,7 +142,7 @@ async function getDzrsTracksFromSelection() {
     flacs = dzrsFiles.value.filter((file) => file.extension === "flac" && selectedDzrsFilePaths.value.includes(file.path));
   };
   const flac_paths = flacs.map((f) => f.path);
-  const result = await invoke("get_dzrs_tracks", { paths: flac_paths, clearStored: false, getDeezerTags: true })
+  const result = await invoke("get_all_dzrs_tracks", { paths: flac_paths, clearStored: false, getDeezerTags: true })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
   dzrsTracks.value = result.items;
@@ -154,9 +174,49 @@ function updateDzrsFilesStatus() {
   });
 };
 
+function showFileModifiedIcon(file) {
+  const track = dzrsTracks.value.find((t) => t.path === file.path);
+  if (track) {
+    if (!isEqual(track.tags, track.tagsToSave)) {
+      return true
+    } else {
+      return false
+    };
+  } else {
+    return false
+  };
+};
+
+async function saveModifiedTracks() {
+  const modifiedTracks = dzrsTracks.value.filter((t) => !isEqual(t.tags, t.tagsToSave));
+  const modifiedTracksPaths = modifiedTracks.map((t) => t.path);
+  const confirmation = await confirm('Files will be saved with updated tags, are you sure?', { title: 'Save', type: 'warning' });
+  if (confirmation) {
+    if (selectedDzrsFilePaths.value.length >= 1) {
+      // Save only selected files
+      const savedPaths = [];
+      for (const track of modifiedTracks) {
+        if (selectedDzrsFilePaths.value.includes(track.path)) {
+          await invoke("save_tags_to_file", { path: track.path, tags: track.tagsToSave })
+          .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: `${err} Path ${track.path}` }));
+          savedPaths.push(track.path);
+        };
+      };
+      updateDzrsTracks(savedPaths);
+    } else {
+      // Save all modified files instead
+      for (const track of modifiedTracks) {
+        await invoke("save_tags_to_file", { path: track.path, tags: track.tagsToSave })
+          .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: `${err} Path ${track.path}` }));
+      };
+      updateDzrsTracks(modifiedTracksPaths);
+    };
+  };
+};
+
 onMounted(async () => {
   await loadFilesIntoView();
-  await getDzrsTracks();
+  await getAllDzrsTracks();
   appWindow.listen("watcher_fired", async (_) => {
     await loadFilesIntoView();
   });
@@ -195,14 +255,14 @@ onMounted(async () => {
               <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px;"/>
             </div>
           </button>
-          <button style="padding: 2px 8px;" v-show="tagsNeedSave">
+          <button style="padding: 2px 8px;" @click="saveModifiedTracks" :disabled="!tagsNeedSave">
             <div class="row" style="color: var(--color-text);">
               Save
               <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
             </div>
           </button>
         </div>
-        <div class="frame">
+        <div class="frame" @click.self="selectedDzrsFilePaths = []">
           <table>
             <thead class="table-header">
               <tr>
@@ -225,7 +285,9 @@ onMounted(async () => {
             <tbody>
               <template v-for="file in dzrsFiles" :key="file.path">
                 <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedDzrsFilePaths.includes(file.path) }">
-                  <td><!-- Empty cell reserved for table filter --></td>
+                  <td>
+                    <IconPointFilled v-if="showFileModifiedIcon(file)"/>
+                  </td>
                   <td class="img-container">
                     <IconMusic v-if="['flac', 'mp3'].includes(file.extension)" color="#c9c9c9"/>
                     <IconFile v-else color="#c9c9c9"/>
@@ -260,11 +322,11 @@ onMounted(async () => {
       <div class="frame row" style="gap: 4px;">
         <div class="image-tag column">
           <div class="column">
-            <div v-if="activeDzrsTrack !== emptyTrack" v-for="picture in activeDzrsTrack.pictures">
+            <div v-if="activeDzrsTrack !== emptyTrack" v-for="picture in activeDzrsTrack.pictures" style="margin-bottom: 4px;">
               <img :src="`data:image/png;base64, ${picture.b64}`" style="border-radius: 5%;">
               <p>{{ picture.picType }}</p>
-              <p>{{ picture.description }}</p>
-              <p>{{ picture.width }}x{{ picture.height }}</p>
+              <p style="font-size: 0.8em;">{{ picture.description }}</p>
+              <p style="font-style: italic; font-size: 0.8em;">{{ picture.width }}x{{ picture.height }}</p>
             </div>
             <div v-else>
               <img src="/assets/tag-image-placeholder.png">
@@ -328,13 +390,13 @@ onMounted(async () => {
                   <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.lyrics }}</textarea></div></td>
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.lyrics !== activeDzrsTrack.tags.lyrics}" v-model="activeDzrsTrack.tagsToSave.lyrics"></textarea></div></td>
                 </tr>
-                <tr>
+                <tr style="height: 80px;">
                   <th>Copyright</th>
                   <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.copyright }}</textarea></div></td>
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.copyright !== activeDzrsTrack.tags.copyright}" v-model="activeDzrsTrack.tagsToSave.copyright"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Description</th>
+                  <th style="height: 80px;">Description</th>
                   <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.description }}</textarea></div></td>
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.description !== activeDzrsTrack.tags.description}" v-model="activeDzrsTrack.tagsToSave.description"></textarea></div></td>
                 </tr>

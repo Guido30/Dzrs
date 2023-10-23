@@ -7,7 +7,7 @@ mod models;
 
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::{DzrsTrack, DzrsTracks, FromWithConfig};
+use models::dzrs_tracks::{DzrsTrack, DzrsTracks, FromWithConfig, TrackTags};
 use models::dzrs_types::NotificationAdd;
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
@@ -20,13 +20,24 @@ use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, Window};
 
 #[tauri::command]
+async fn save_tags_to_file(
+    path: String,
+    tags: TrackTags,
+    dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
+) -> Result<(), String> {
+    let flacs = dzrs_tracks.lock().unwrap().clone();
+    flacs.save_tags(path, &tags)?;
+    Ok(())
+}
+
+#[tauri::command]
 async fn get_empty_track() -> Result<DzrsTrack, ()> {
     let track = DzrsTrack::default();
     Ok(track)
 }
 
 #[tauri::command]
-async fn get_dzrs_tracks(
+async fn get_all_dzrs_tracks(
     paths: Vec<String>,
     clear_stored: bool,
     get_deezer_tags: bool,
@@ -41,6 +52,26 @@ async fn get_dzrs_tracks(
     flacs.update(paths, &config, get_deezer_tags).await;
     *dzrs_tracks.lock().unwrap() = flacs.clone();
     Ok(flacs)
+}
+
+#[tauri::command]
+async fn update_dzrs_tracks(
+    paths: Vec<String>,
+    get_deezer_tags: bool,
+    dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<Vec<DzrsTrack>, ()> {
+    let config = configuration.lock().unwrap().clone().parsed();
+    let mut flacs = dzrs_tracks.lock().unwrap().clone();
+    flacs.update(paths.clone(), &config, get_deezer_tags).await;
+    *dzrs_tracks.lock().unwrap() = flacs.clone();
+    let mut tracks = Vec::new();
+    for path in paths {
+        if let Some(t) = flacs.get_track(path) {
+            tracks.push(t.to_owned());
+        };
+    }
+    Ok(tracks)
 }
 
 #[tauri::command]
@@ -221,8 +252,10 @@ fn main() {
             open_explorer,
             get_slavart_tracks,
             download_track,
-            get_dzrs_tracks,
+            get_all_dzrs_tracks,
+            update_dzrs_tracks,
             get_empty_track,
+            save_tags_to_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running dzrs");

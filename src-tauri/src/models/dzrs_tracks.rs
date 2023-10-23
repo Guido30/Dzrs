@@ -13,6 +13,32 @@ use std::io::BufReader;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
+fn read_flac(path: String) -> Result<FlacFile, Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let flac = FlacFile::read_from(&mut reader, ParseOptions::default())?;
+    Ok(flac)
+}
+
+fn update_vorbis_with_tags<'a>(
+    vorbis: &'a mut VorbisComments,
+    tags: &'a TrackTags,
+) -> Result<(), String> {
+    vorbis.set_title(tags.title.clone());
+    vorbis.set_artist(tags.artist.clone());
+    vorbis.set_album(tags.album.clone());
+    vorbis.set_genre(tags.genre.clone());
+    vorbis.set_comment(tags.comment.clone());
+    vorbis.set_track(tags.track_number.parse().unwrap()); // needs handling
+    vorbis.set_track_total(tags.track_total.parse().unwrap()); // needs handling
+    vorbis.set_disk(tags.disc_number.parse().unwrap()); // needs handling
+    vorbis.set_disk_total(tags.disc_total.parse().unwrap()); // needs handling
+    vorbis.set_year(tags.year.parse().unwrap()); // needs handling
+
+    // Rest of tags needs to be saved
+    Ok(())
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DzrsTracks {
@@ -30,7 +56,7 @@ pub struct DzrsTrack {
     pub tags: TrackTags,
     pub pictures: Vec<DzrsTrackPicture>,
     pub tags_deezer: TrackTags,
-    pub tag_candidates: DzrsTrackTagCandidates,
+    pub tag_candidates: Vec<DzrsTrackTagCandidate>,
     pub tags_to_save: TrackTags,
     pub matched: bool,
     pub fetched: bool,
@@ -84,7 +110,7 @@ pub struct DzrsTrackPicture {
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct DzrsTrackTagCandidates {}
+pub struct DzrsTrackTagCandidate {}
 
 impl DzrsTracks {
     pub fn add(&mut self, track: DzrsTrack) {
@@ -129,6 +155,28 @@ impl DzrsTracks {
                 }
             }
         }
+    }
+
+    pub fn save_tags(self, path: String, tags: &TrackTags) -> Result<(), String> {
+        if let None = self.get_track(path.clone()) {
+            return Err(format!(
+                "Track currently not loaded for path {}",
+                path.clone()
+            ));
+        }
+        let mut flac = match read_flac(path.clone()) {
+            Ok(f) => f,
+            Err(err) => return Err(err.to_string()),
+        };
+        let vorbis = match flac.vorbis_comments_mut() {
+            Some(v) => v,
+            None => return Err(format!("No Vorbis Comments Found for {}", path.clone())),
+        };
+        update_vorbis_with_tags(vorbis, tags)?;
+        if let Err(err) = flac.save_to_path(path) {
+            return Err(err.to_string());
+        };
+        Ok(())
     }
 }
 
@@ -344,13 +392,7 @@ impl FromWithConfig<Vec<String>> for DzrsTracks {
 
 impl FromWithConfig<String> for DzrsTrack {
     fn from_with_config(path: String, config: &DzrsConfigurationParsed) -> Self {
-        // Read file from given path and its currently stored tags
-        let file = match File::open(path.clone()) {
-            Ok(f) => f,
-            Err(_) => return Self::default(),
-        };
-        let mut reader = BufReader::new(file);
-        let flac = match FlacFile::read_from(&mut reader, ParseOptions::default()) {
+        let flac = match read_flac(path.clone()) {
             Ok(f) => f,
             Err(_) => return Self::default(),
         };
@@ -366,7 +408,7 @@ impl FromWithConfig<String> for DzrsTrack {
             tags: tags.clone(),
             pictures,
             tags_deezer: TrackTags::default(),
-            tag_candidates: DzrsTrackTagCandidates::default(),
+            tag_candidates: vec![DzrsTrackTagCandidate::default()],
             tags_to_save: tags,
             matched: false,
             fetched: false,

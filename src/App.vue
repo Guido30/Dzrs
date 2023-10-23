@@ -32,8 +32,10 @@ appWindow.listen("page-change", (event) => {
 });
 
 onMounted(async () => {
+    // Prevent default browser context menu
+    document.addEventListener('contextmenu', event => event.preventDefault());
     await invoke("show_window");
-    const path = appConfig.directory_view_path;
+    const path = appConfig.directoryViewPath;
     if (path) {
         await invoke("watch_directory", { path: path })
             .then((_) => "")
