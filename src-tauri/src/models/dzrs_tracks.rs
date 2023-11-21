@@ -20,23 +20,48 @@ fn read_flac(path: String) -> Result<FlacFile, Box<dyn std::error::Error>> {
     Ok(flac)
 }
 
-fn update_vorbis_with_tags<'a>(
-    vorbis: &'a mut VorbisComments,
-    tags: &'a TrackTags,
-) -> Result<(), String> {
-    vorbis.set_title(tags.title.clone());
-    vorbis.set_artist(tags.artist.clone());
-    vorbis.set_album(tags.album.clone());
-    vorbis.set_genre(tags.genre.clone());
-    vorbis.set_comment(tags.comment.clone());
+fn update_vorbis_with_tags<'a>(vorbis: &'a mut VorbisComments, tags: TrackTags) {
+    vorbis.set_title(tags.title);
+    vorbis.set_artist(tags.artist);
+    vorbis.set_album(tags.album);
+    vorbis.set_genre(tags.genre);
+    vorbis.set_comment(tags.comment);
     vorbis.set_track(tags.track_number.parse().unwrap()); // needs handling
     vorbis.set_track_total(tags.track_total.parse().unwrap()); // needs handling
-    vorbis.set_disk(tags.disc_number.parse().unwrap()); // needs handling
-    vorbis.set_disk_total(tags.disc_total.parse().unwrap()); // needs handling
-    vorbis.set_year(tags.year.parse().unwrap()); // needs handling
-
-    // Rest of tags needs to be saved
-    Ok(())
+    vorbis.set_disk(tags.disk_number.parse().unwrap()); // needs handling
+    vorbis.set_disk_total(tags.disk_total.parse().unwrap()); // needs handling
+    vorbis.insert("ALBUMARTIST".to_string(), tags.album_artist);
+    vorbis.insert("COMPOSER".to_string(), tags.composer);
+    vorbis.insert("PERFORMER".to_string(), tags.performer);
+    vorbis.insert("PRODUCER".to_string(), tags.producer);
+    vorbis.insert("LYRICS".to_string(), tags.lyrics);
+    vorbis.insert("COPYRIGHT".to_string(), tags.copyright);
+    vorbis.insert("DESCRIPTION".to_string(), tags.description);
+    vorbis.insert("DATE".to_string(), tags.date);
+    vorbis.insert("YEAR".to_string(), tags.year);
+    vorbis.insert("ORIGINALDATE".to_string(), tags.original_date);
+    vorbis.insert("LABEL".to_string(), tags.label);
+    vorbis.insert("BARCODE".to_string(), tags.barcode);
+    vorbis.insert("ISRC".to_string(), tags.isrc);
+    vorbis.insert("BPM".to_string(), tags.bpm);
+    vorbis.insert(
+        "REPLAYGAIN_ALBUM_GAIN".to_string(),
+        tags.replaygain_album_gain,
+    );
+    vorbis.insert(
+        "REPLAYGAIN_ALBUM_PEAK".to_string(),
+        tags.replaygain_album_peak,
+    );
+    vorbis.insert(
+        "REPLAYGAIN_TRACK_GAIN".to_string(),
+        tags.replaygain_track_gain,
+    );
+    vorbis.insert(
+        "REPLAYGAIN_TRACK_PEAK".to_string(),
+        tags.replaygain_track_peak,
+    );
+    vorbis.insert("SOURCEID".to_string(), tags.source_id);
+    vorbis.insert("ENCODER".to_string(), tags.encoder);
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -79,12 +104,11 @@ pub struct TrackTags {
     description: String,
     track_number: String,
     track_total: String,
-    disc_number: String,
-    disc_total: String,
+    disk_number: String,
+    disk_total: String,
     date: String,
     year: String,
     original_date: String,
-    original_year: String,
     comment: String,
     label: String,
     barcode: String,
@@ -157,7 +181,7 @@ impl DzrsTracks {
         }
     }
 
-    pub fn save_tags(self, path: String, tags: &TrackTags) -> Result<(), String> {
+    pub fn save_tags(self, path: String, tags: TrackTags) -> Result<(), String> {
         if let None = self.get_track(path.clone()) {
             return Err(format!(
                 "Track currently not loaded for path {}",
@@ -172,7 +196,7 @@ impl DzrsTracks {
             Some(v) => v,
             None => return Err(format!("No Vorbis Comments Found for {}", path.clone())),
         };
-        update_vorbis_with_tags(vorbis, tags)?;
+        update_vorbis_with_tags(vorbis, tags);
         if let Err(err) = flac.save_to_path(path) {
             return Err(err.to_string());
         };
@@ -182,11 +206,10 @@ impl DzrsTracks {
 
 impl DzrsTrack {
     pub async fn from_with_deezer(path: String, config: &DzrsConfigurationParsed) -> Self {
-        // Read file from given path with its stored tags, and get tags from deezer
         let mut dzrs_track = Self::from_with_config(path, config);
 
         let deezer = Deezer::new();
-        let track = match deezer
+        let track_ = match deezer
             .search_track(
                 &dzrs_track.tags.title,
                 &dzrs_track.tags.artist,
@@ -206,7 +229,15 @@ impl DzrsTrack {
             }
         };
 
-        let song = match &track {
+        let track = match &track_ {
+            Some(t) => match deezer.track(t.id).await {
+                Ok(s) => Some(s),
+                Err(_) => None,
+            },
+            None => None,
+        };
+
+        let gw_track = match &track_ {
             Some(t) => match deezer.gw_song(t.id).await {
                 Ok(s) => Some(s),
                 Err(_) => None,
@@ -214,7 +245,7 @@ impl DzrsTrack {
             None => None,
         };
 
-        let album = match &track {
+        let album = match &track_ {
             Some(t) => match deezer.album(t.album.id).await {
                 Ok(a) => Some(a),
                 Err(_) => None,
@@ -222,7 +253,15 @@ impl DzrsTrack {
             None => None,
         };
 
-        let lyrics = match &track {
+        let gw_album = match &track_ {
+            Some(t) => match deezer.gw_album(t.album.id).await {
+                Ok(a) => Some(a),
+                Err(_) => None,
+            },
+            None => None,
+        };
+
+        let lyrics = match &track_ {
             Some(t) => match deezer.gw_lyrics(t.id).await {
                 Ok(l) => Some(l),
                 Err(_) => None,
@@ -231,7 +270,7 @@ impl DzrsTrack {
         };
 
         let mut tags_deezer = dzrs_track.tags.clone();
-        tags_deezer.update_with_deezer(track, song, album, lyrics, config);
+        tags_deezer.update_with_deezer(track, gw_track, album, gw_album, lyrics, config);
         dzrs_track.tags_deezer = tags_deezer.clone();
         dzrs_track.tags_to_save = tags_deezer;
 
@@ -242,9 +281,10 @@ impl DzrsTrack {
 impl TrackTags {
     fn update_with_deezer(
         &mut self,
-        track: Option<deezer_api::Track>,
-        song: Option<deezer_gw::Song>,
+        track: Option<deezer_api::MainTrack>,
+        gw_track: Option<deezer_gw::Song>,
         album: Option<deezer_api::MainAlbum>,
+        gw_album: Option<deezer_gw::Album>,
         lyrics: Option<deezer_gw::Lyrics>,
         config: &DzrsConfigurationParsed,
     ) {
@@ -261,10 +301,38 @@ impl TrackTags {
                 self.album_artist = t.artist.name.clone();
             };
             artists.push(t.artist.name);
+            if config.tag_dz_track_number {
+                self.track_number = t.track_position.to_string()
+            };
+            if config.tag_dz_disk_number {
+                self.disk_number = t.disk_number.to_string()
+            };
+            if config.tag_dz_date {
+                self.date = t.release_date.clone();
+            };
+            if config.tag_dz_year {
+                self.year = t.release_date[..=3].to_string();
+            }
+            if config.tag_dz_isrc {
+                self.isrc = t.isrc;
+            };
+            if config.tag_dz_bpm {
+                if t.bpm != 0.0 {
+                    self.bpm = t.bpm.to_string();
+                };
+            };
+            if config.tag_dz_replaygain_track_gain {
+                if t.gain != 0.0 {
+                    self.replaygain_track_gain = t.gain.to_string() + " dB";
+                };
+            };
+            if config.tag_dz_source_id {
+                self.source_id = t.id.to_string();
+            };
         };
 
-        if let Some(s) = song {
-            let mut _artists = s.artists.clone();
+        if let Some(t) = gw_track {
+            let mut _artists = t.artists.clone();
             _artists.sort_by(|a, b| {
                 a.artists_songs_order
                     .parse::<u16>()
@@ -274,28 +342,28 @@ impl TrackTags {
             _artists.iter().for_each(|a| {
                 if !artists.contains(&a.art_name) {
                     artists.push(a.art_name.clone())
-                }
+                };
             });
-            let contributors = match s.sng_contributors {
+            let contributors = match t.sng_contributors {
                 deezer_gw::SngContributors::SngContributors(contributors) => contributors,
                 deezer_gw::SngContributors::Empty(_) => HashMap::new(),
             };
             if config.tag_dz_composer {
                 if let Some(composers) = contributors.get("composer") {
                     self.composer = composers.join(&config.tag_separator)
-                }
-            }
+                };
+            };
             if config.tag_dz_performer {
                 if let Some(performer) = contributors.get("performer") {
                     self.performer = performer.join(&config.tag_separator)
-                }
-            }
+                };
+            };
             if config.tag_dz_producer {
                 if let Some(producer) = contributors.get("producer") {
                     self.producer = producer.join(&config.tag_separator)
-                }
-            }
-        }
+                };
+            };
+        };
 
         if let Some(a) = album {
             if config.tag_dz_genre {
@@ -326,12 +394,35 @@ impl TrackTags {
                 for (i, g) in split_genres {
                     if !genres.contains(&g) {
                         genres.insert(i, g);
-                    }
+                    };
                 }
 
                 self.genre = genres.join(&config.tag_separator);
+            };
+            if config.tag_dz_label {
+                self.label = a.label;
             }
-        }
+            if config.tag_dz_barcode {
+                self.barcode = a.upc;
+            }
+        };
+
+        if let Some(a) = gw_album {
+            if config.tag_dz_copyright {
+                self.copyright = a.copyright;
+            };
+            if config.tag_dz_track_total {
+                self.track_total = a.number_track;
+            };
+            if config.tag_dz_disk_total {
+                self.disk_total = a.number_disk;
+            };
+            if config.tag_dz_date {
+                if let Some(d) = a.original_release_date {
+                    self.original_date = d;
+                };
+            };
+        };
 
         if let Some(l) = lyrics {
             if config.tag_dz_lyrics {
@@ -342,20 +433,20 @@ impl TrackTags {
                         if let Some(mut t) = l_line.lrc_timestamp {
                             t.push(' ');
                             line.push_str(t.as_str());
-                        }
+                        };
                         line.push_str(l_line.line.as_str());
                         lines.push(line);
                     }
                     self.lyrics = lines.join("\r\n");
                 } else {
                     self.lyrics = l.lyrics_text
-                }
-            }
-        }
+                };
+            };
+        };
 
         if config.tag_dz_artist {
             self.artist = artists.join(config.tag_separator.as_str());
-        }
+        };
     }
 }
 
@@ -436,11 +527,10 @@ impl FromWithConfig<VorbisComments> for TrackTags {
             copyright: vorbis.get("COPYRIGHT").unwrap_or_default().to_string(),
             track_number: vorbis.track().unwrap_or_default().to_string(),
             track_total: vorbis.track_total().unwrap_or_default().to_string(),
-            disc_number: vorbis.disk().unwrap_or_default().to_string(),
-            disc_total: vorbis.disk_total().unwrap_or_default().to_string(),
+            disk_number: vorbis.disk().unwrap_or_default().to_string(),
+            disk_total: vorbis.disk_total().unwrap_or_default().to_string(),
             date: vorbis.get("DATE").unwrap_or_default().to_string(),
             original_date: vorbis.get("ORIGINALDATE").unwrap_or_default().to_string(),
-            original_year: vorbis.get("ORIGINALYEAR").unwrap_or_default().to_string(),
             label: vorbis.get_all("LABEL").collect::<Vec<&str>>().join(sep),
             year: vorbis.year().unwrap_or_default().to_string(),
             isrc: vorbis.get("ISRC").unwrap_or_default().to_string(),

@@ -125,7 +125,7 @@ pub struct Tracks {
 pub struct TrackItem {
     pub maximum_bit_depth: i64,
     pub copyright: Option<String>,
-    pub performers: String,
+    pub performers: Option<String>,
     pub audio_info: AudioInfo,
     pub performer: Performer,
     pub album: Album,

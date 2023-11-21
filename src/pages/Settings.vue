@@ -152,12 +152,12 @@ async function setLocalFilesPath() {
                 <span>Track Total</span>
               </div>
               <div class="row">
-                <input @input="e => updateConfig('tag_dz_disc_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiscNumber">
-                <span>Disc Number</span>
+                <input @input="e => updateConfig('tag_dz_disk_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiskNumber">
+                <span>Disk Number</span>
               </div>
               <div class="row">
-                <input @input="e => updateConfig('tag_dz_disc_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiscTotal">
-                <span>Disc Total</span>
+                <input @input="e => updateConfig('tag_dz_disk_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiskTotal">
+                <span>Disk Total</span>
               </div>
               <div class="row">
                 <input @input="e => updateConfig('tag_dz_album_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbumArtist">
@@ -263,16 +263,16 @@ async function setLocalFilesPath() {
             </div>
             <div class="column" style="align-items: start; gap: 4px;">
               <div class="row">
-                <input @input="e => updateConfig('tag_pad_disc', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDisc">
-                <span>Disc</span>
+                <input @input="e => updateConfig('tag_pad_disk', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDisk">
+                <span>Disk</span>
               </div>
               <div class="row">
-                <input @input="e => updateConfig('tag_pad_disc_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDiscTotal">
-                <span>Disc Total</span>
+                <input @input="e => updateConfig('tag_pad_disk_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDiskTotal">
+                <span>Disk Total</span>
               </div>
               <div class="row">
                 <span style="margin-right: 8px;">Character</span>
-                <input @change="e => updateConfig('tag_pad_disc_char', e.target.value)" type="text" maxlength="1" class="input-number" :value="appConfig.tagPadDiscChar">
+                <input @change="e => updateConfig('tag_pad_disk_char', e.target.value)" type="text" maxlength="1" class="input-number" :value="appConfig.tagPadDiskChar">
               </div>
             </div>
           </div>

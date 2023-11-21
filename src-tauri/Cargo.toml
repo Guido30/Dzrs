@@ -25,7 +25,7 @@ chrono = "0.4.26"
 notify = "6.1.1"
 lofty = "0.15.0"
 base64 = "0.21.4"
-deezerapi-rs = { path = "../../deezerapi-rs" }
+deezerapi-rs = { git = "https://github.com/Guido30/DeezerApi-RS.git", branch = "main" }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

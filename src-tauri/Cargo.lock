@@ -556,6 +556,7 @@ dependencies = [
 [[package]]
 name = "deezerapi-rs"
 version = "0.1.0"
+source = "git+https://github.com/Guido30/DeezerApi-RS.git?branch=main#764b9586c948d800dcd83f32b5ad3861ce9645d1"
 dependencies = [
  "async-recursion",
  "rand 0.8.5",

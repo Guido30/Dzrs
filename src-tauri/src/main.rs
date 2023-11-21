@@ -26,7 +26,7 @@ async fn save_tags_to_file(
     dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
 ) -> Result<(), String> {
     let flacs = dzrs_tracks.lock().unwrap().clone();
-    flacs.save_tags(path, &tags)?;
+    flacs.save_tags(path, tags)?;
     Ok(())
 }
 

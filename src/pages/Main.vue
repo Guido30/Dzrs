@@ -411,14 +411,14 @@ onMounted(async () => {
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.trackTotal !== activeDzrsTrack.tags.trackTotal}" v-model="activeDzrsTrack.tagsToSave.trackTotal"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Disc Number</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.discNumber }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.discNumber !== activeDzrsTrack.tags.discNumber}" v-model="activeDzrsTrack.tagsToSave.discNumber"></textarea></div></td>
+                  <th>Disk Number</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.diskNumber }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.diskNumber !== activeDzrsTrack.tags.diskNumber}" v-model="activeDzrsTrack.tagsToSave.diskNumber"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Total Discs</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.discTotal }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.discTotal !== activeDzrsTrack.tags.discTotal}" v-model="activeDzrsTrack.tagsToSave.discTotal"></textarea></div></td>
+                  <th>Total Disks</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.diskTotal }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.diskTotal !== activeDzrsTrack.tags.diskTotal}" v-model="activeDzrsTrack.tagsToSave.diskTotal"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Length</th>
@@ -439,11 +439,6 @@ onMounted(async () => {
                   <th>Original Date</th>
                   <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.originalDate }}</textarea></div></td>
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.originalDate !== activeDzrsTrack.tags.originalDate}" v-model="activeDzrsTrack.tagsToSave.originalDate"></textarea></div></td>
-                </tr>
-                <tr>
-                  <th>Original Year</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.originalYear }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.originalYear !== activeDzrsTrack.tags.originalYear}" v-model="activeDzrsTrack.tagsToSave.originalYear"></textarea></div></td>
                 </tr>
                 <tr>
                   <th>Comment</th>
