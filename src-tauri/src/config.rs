@@ -27,10 +27,8 @@ pub struct DzrsConfiguration {
     pub filter_dirview_extension: String,
     pub tag_pad_track: String,
     pub tag_pad_track_total: String,
-    pub tag_pad_track_char: String,
     pub tag_pad_disk: String,
     pub tag_pad_disk_total: String,
-    pub tag_pad_disk_char: String,
     pub tag_separator: String,
     pub tag_dz_title: String,
     pub tag_dz_artist: String,
@@ -50,6 +48,7 @@ pub struct DzrsConfiguration {
     pub tag_dz_disk_total: String,
     pub tag_dz_date: String,
     pub tag_dz_year: String,
+    pub tag_dz_original_date: String,
     pub tag_dz_label: String,
     pub tag_dz_barcode: String,
     pub tag_dz_isrc: String,
@@ -57,6 +56,8 @@ pub struct DzrsConfiguration {
     pub tag_dz_replaygain_track_gain: String,
     pub tag_dz_source_id: String,
     pub tag_prefer_sync_lyrics: String,
+    pub tag_date_as_year: String,
+    pub tag_originaldate_as_year: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -78,10 +79,8 @@ pub struct DzrsConfigurationParsed {
     pub filter_dirview_extension: bool,
     pub tag_pad_track: bool,
     pub tag_pad_track_total: bool,
-    pub tag_pad_track_char: char,
     pub tag_pad_disk: bool,
     pub tag_pad_disk_total: bool,
-    pub tag_pad_disk_char: char,
     pub tag_separator: String,
     pub tag_dz_title: bool,
     pub tag_dz_artist: bool,
@@ -101,6 +100,7 @@ pub struct DzrsConfigurationParsed {
     pub tag_dz_disk_total: bool,
     pub tag_dz_date: bool,
     pub tag_dz_year: bool,
+    pub tag_dz_original_date: bool,
     pub tag_dz_label: bool,
     pub tag_dz_barcode: bool,
     pub tag_dz_isrc: bool,
@@ -108,6 +108,8 @@ pub struct DzrsConfigurationParsed {
     pub tag_dz_replaygain_track_gain: bool,
     pub tag_dz_source_id: bool,
     pub tag_prefer_sync_lyrics: bool,
+    pub tag_date_as_year: bool,
+    pub tag_originaldate_as_year: bool,
 }
 
 impl DzrsConfiguration {
@@ -153,10 +155,8 @@ impl DzrsConfiguration {
             "filter_dirview_extension" => self.filter_dirview_extension = value,
             "tag_pad_track" => self.tag_pad_track = value,
             "tag_pad_track_total" => self.tag_pad_track_total = value,
-            "tag_pad_track_char" => self.tag_pad_track_char = value,
             "tag_pad_disk" => self.tag_pad_disk = value,
             "tag_pad_disk_total" => self.tag_pad_disk_total = value,
-            "tag_pad_disk_char" => self.tag_pad_disk_char = value,
             "tag_separator" => self.tag_separator = value,
             "tag_dz_title" => self.tag_dz_title = value,
             "tag_dz_artist" => self.tag_dz_artist = value,
@@ -176,6 +176,7 @@ impl DzrsConfiguration {
             "tag_dz_disk_total" => self.tag_dz_disk_total = value,
             "tag_dz_date" => self.tag_dz_date = value,
             "tag_dz_year" => self.tag_dz_date = value,
+            "tag_dz_original_date" => self.tag_dz_original_date = value,
             "tag_dz_label" => self.tag_dz_label = value,
             "tag_dz_barcode" => self.tag_dz_barcode = value,
             "tag_dz_isrc" => self.tag_dz_isrc = value,
@@ -183,6 +184,8 @@ impl DzrsConfiguration {
             "tag_dz_replaygain_track_gain" => self.tag_dz_replaygain_track_gain = value,
             "tag_dz_source_id" => self.tag_dz_source_id = value,
             "tag_prefer_sync_lyrics" => self.tag_prefer_sync_lyrics = value,
+            "tag_date_as_year" => self.tag_date_as_year = value,
+            "tag_originaldate_as_year" => self.tag_originaldate_as_year = value,
             _ => (),
         }
     }
@@ -216,10 +219,8 @@ impl DzrsConfiguration {
             filter_dirview_extension: self.filter_dirview_extension.parse().unwrap_or(false),
             tag_pad_track: self.tag_pad_track.parse().unwrap_or(false),
             tag_pad_track_total: self.tag_pad_track_total.parse().unwrap_or(false),
-            tag_pad_track_char: self.tag_pad_track_char.parse().unwrap_or('0'),
             tag_pad_disk: self.tag_pad_disk.parse().unwrap_or(false),
             tag_pad_disk_total: self.tag_pad_disk_total.parse().unwrap_or(false),
-            tag_pad_disk_char: self.tag_pad_disk_char.parse().unwrap_or('0'),
             tag_separator: self.tag_separator.clone(),
             tag_dz_title: self.tag_dz_title.parse().unwrap_or(true),
             tag_dz_artist: self.tag_dz_artist.parse().unwrap_or(true),
@@ -239,6 +240,7 @@ impl DzrsConfiguration {
             tag_dz_disk_total: self.tag_dz_disk_total.parse().unwrap_or(true),
             tag_dz_date: self.tag_dz_date.parse().unwrap_or(true),
             tag_dz_year: self.tag_dz_year.parse().unwrap_or(true),
+            tag_dz_original_date: self.tag_dz_original_date.parse().unwrap_or(true),
             tag_dz_label: self.tag_dz_label.parse().unwrap_or(true),
             tag_dz_barcode: self.tag_dz_barcode.parse().unwrap_or(true),
             tag_dz_isrc: self.tag_dz_isrc.parse().unwrap_or(true),
@@ -246,6 +248,8 @@ impl DzrsConfiguration {
             tag_dz_replaygain_track_gain: self.tag_dz_replaygain_track_gain.parse().unwrap_or(true),
             tag_dz_source_id: self.tag_dz_source_id.parse().unwrap_or(true),
             tag_prefer_sync_lyrics: self.tag_prefer_sync_lyrics.parse().unwrap_or(true),
+            tag_date_as_year: self.tag_date_as_year.parse().unwrap_or(true),
+            tag_originaldate_as_year: self.tag_originaldate_as_year.parse().unwrap_or(true),
         }
     }
 }
@@ -270,10 +274,8 @@ impl Default for DzrsConfiguration {
             filter_dirview_extension: "false".into(),
             tag_pad_track: "false".into(),
             tag_pad_track_total: "false".into(),
-            tag_pad_track_char: "0".into(),
             tag_pad_disk: "false".into(),
             tag_pad_disk_total: "false".into(),
-            tag_pad_disk_char: "0".into(),
             tag_separator: "; ".into(),
             tag_dz_title: "true".into(),
             tag_dz_artist: "true".into(),
@@ -293,6 +295,7 @@ impl Default for DzrsConfiguration {
             tag_dz_disk_total: "true".into(),
             tag_dz_date: "true".into(),
             tag_dz_year: "true".into(),
+            tag_dz_original_date: "true".into(),
             tag_dz_label: "true".into(),
             tag_dz_barcode: "true".into(),
             tag_dz_isrc: "true".into(),
@@ -300,6 +303,8 @@ impl Default for DzrsConfiguration {
             tag_dz_replaygain_track_gain: "true".into(),
             tag_dz_source_id: "true".into(),
             tag_prefer_sync_lyrics: "true".into(),
+            tag_date_as_year: "true".into(),
+            tag_originaldate_as_year: "true".into(),
         }
     }
 }

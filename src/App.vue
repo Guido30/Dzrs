@@ -112,7 +112,8 @@ body {
 
 .container {
     box-sizing: border-box;
-    height: calc(100vh - 80px); /* (Container - HeaderBar) */
+    /* height: calc(100vh - 80px); */
+    height: 100vh;
     margin: 0px;
     padding: 10px;
     display: flex;

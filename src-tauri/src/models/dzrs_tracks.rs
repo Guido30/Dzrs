@@ -209,7 +209,7 @@ impl DzrsTrack {
         let mut dzrs_track = Self::from_with_config(path, config);
 
         let deezer = Deezer::new();
-        let track_ = match deezer
+        let track_id = match deezer
             .search_track(
                 &dzrs_track.tags.title,
                 &dzrs_track.tags.artist,
@@ -221,7 +221,7 @@ impl DzrsTrack {
             Ok(t) => {
                 dzrs_track.matched = true;
                 dzrs_track.fetched = true;
-                Some(t)
+                Some((t.id, t.album.id))
             }
             Err(_) => {
                 dzrs_track.fetched = true;
@@ -229,50 +229,37 @@ impl DzrsTrack {
             }
         };
 
-        let track = match &track_ {
-            Some(t) => match deezer.track(t.id).await {
+        if let Some(ids) = track_id {
+            let track = match deezer.track(ids.0).await {
                 Ok(s) => Some(s),
                 Err(_) => None,
-            },
-            None => None,
-        };
+            };
 
-        let gw_track = match &track_ {
-            Some(t) => match deezer.gw_song(t.id).await {
+            let gw_track = match deezer.gw_song(ids.0).await {
                 Ok(s) => Some(s),
                 Err(_) => None,
-            },
-            None => None,
-        };
+            };
 
-        let album = match &track_ {
-            Some(t) => match deezer.album(t.album.id).await {
+            let album = match deezer.album(ids.1).await {
                 Ok(a) => Some(a),
                 Err(_) => None,
-            },
-            None => None,
-        };
+            };
 
-        let gw_album = match &track_ {
-            Some(t) => match deezer.gw_album(t.album.id).await {
+            let gw_album = match deezer.gw_album(ids.1).await {
                 Ok(a) => Some(a),
                 Err(_) => None,
-            },
-            None => None,
-        };
+            };
 
-        let lyrics = match &track_ {
-            Some(t) => match deezer.gw_lyrics(t.id).await {
+            let lyrics = match deezer.gw_lyrics(ids.0).await {
                 Ok(l) => Some(l),
                 Err(_) => None,
-            },
-            None => None,
-        };
+            };
 
-        let mut tags_deezer = dzrs_track.tags.clone();
-        tags_deezer.update_with_deezer(track, gw_track, album, gw_album, lyrics, config);
-        dzrs_track.tags_deezer = tags_deezer.clone();
-        dzrs_track.tags_to_save = tags_deezer;
+            let mut tags_deezer = dzrs_track.tags.clone();
+            tags_deezer.update_with_deezer(track, gw_track, album, gw_album, lyrics, config);
+            dzrs_track.tags_deezer = tags_deezer.clone();
+            dzrs_track.tags_to_save = tags_deezer;
+        };
 
         dzrs_track
     }
@@ -302,13 +289,25 @@ impl TrackTags {
             };
             artists.push(t.artist.name);
             if config.tag_dz_track_number {
-                self.track_number = t.track_position.to_string()
+                if config.tag_pad_track {
+                    self.track_number = format!("{:0>2}", t.track_position);
+                } else {
+                    self.track_number = t.track_position.to_string()
+                };
             };
             if config.tag_dz_disk_number {
-                self.disk_number = t.disk_number.to_string()
+                if config.tag_pad_disk {
+                    self.disk_number = format!("{:0>2}", t.disk_number);
+                } else {
+                    self.disk_number = t.disk_number.to_string()
+                };
             };
             if config.tag_dz_date {
-                self.date = t.release_date.clone();
+                if config.tag_date_as_year {
+                    self.date = t.release_date[..=3].to_string();
+                } else {
+                    self.date = t.release_date.clone();
+                };
             };
             if config.tag_dz_year {
                 self.year = t.release_date[..=3].to_string();
@@ -412,14 +411,26 @@ impl TrackTags {
                 self.copyright = a.copyright;
             };
             if config.tag_dz_track_total {
-                self.track_total = a.number_track;
+                if config.tag_pad_track_total {
+                    self.track_total = format!("{:0>2}", a.number_track);
+                } else {
+                    self.track_total = a.number_track;
+                };
             };
             if config.tag_dz_disk_total {
-                self.disk_total = a.number_disk;
+                if config.tag_pad_disk_total {
+                    self.disk_total = format!("{:0>2}", a.number_disk);
+                } else {
+                    self.disk_total = a.number_disk;
+                };
             };
-            if config.tag_dz_date {
+            if config.tag_dz_original_date {
                 if let Some(d) = a.original_release_date {
-                    self.original_date = d;
+                    if config.tag_originaldate_as_year {
+                        self.original_date = d[..=3].to_string();
+                    } else {
+                        self.original_date = d;
+                    };
                 };
             };
         };

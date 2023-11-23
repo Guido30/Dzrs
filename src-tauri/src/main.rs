@@ -121,12 +121,15 @@ async fn download_track(
         Ok(res) => res,
         Err(err) => return Err(err.to_string()),
     };
+    if !response.status().is_success() {
+        return Err(format!("Error {} for {}", response.status().as_str(), url));
+    }
     let content_length: u64 = response.content_length().unwrap_or_default();
     let bytes = response.bytes().await.unwrap();
     let res_length = bytes.len();
-    if content_length != res_length as u64 {
+    if content_length != res_length as u64 || res_length <= 1024 {
         return Err(format!(
-            "Download request failed, received {} / {}  bytes",
+            "Download failed, received {} / {} bytes",
             res_length, content_length
         )
         .into());

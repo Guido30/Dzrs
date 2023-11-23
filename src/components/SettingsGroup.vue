@@ -17,10 +17,9 @@ function toggleExpandGroup() {
 <template>
     <div class="column setting-column">
         <div class="row setting-btn" ref="header" @click="toggleExpandGroup">
-            <IconCaretRightFilled size="30" class="icon"/>
-            <slot name="head">
-
-            </slot>
+          <IconCaretRightFilled size="30" class="icon"/>
+          <slot name="head">
+          </slot>
         </div>
         <div :class="{ 'column': prop.bodyAsColumn }" class="setting-body" ref="body">
             <slot name="body">

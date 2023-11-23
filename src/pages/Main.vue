@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
 import { isEqual } from 'lodash';
-import { IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile } from "@tabler/icons-vue";
+import { IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
 import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser, emptyTrack } from "../helpers";
 
@@ -308,13 +308,13 @@ onMounted(async () => {
           </table>
         </div>
       </div>
-      <div class="source-panel">
-        <div class="column" style="flex-grow: 1;">
-          <div class="frame">
-            <div class="column">
-              <p>Sources</p>
-            </div>
-          </div>
+      <div class="source-panel frame">
+        <div class="sources-header">
+          <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Sources</p>
+        </div>
+        <div v-for="source in activeDzrsTrack.tagCandidates" :key="item.id"></div>
+        <div class="row sources-footer">
+            <IconRestore @click="" size="25" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
     </div>
@@ -649,6 +649,23 @@ p {
 
 .tags-panel table tbody tr {
   height: 35px;
+}
+
+.sources-header {
+  font-style: italic;
+  position: sticky;
+  top: 0;
+}
+
+.sources-footer {
+  margin-top: auto;
+  justify-content: flex-end;
+  padding: 5px;
+  border-top: 1px solid var(--color-bg-2);
+  position: sticky;
+  bottom: 0px;
+  background-color: var(--color-bg-1);
+  transition: all 0.2s ease;
 }
 
 .img-container, .img-container * {

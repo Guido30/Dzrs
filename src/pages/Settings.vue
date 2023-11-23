@@ -83,10 +83,6 @@ async function setLocalFilesPath() {
               <IconFolder color="var(--color-text)"/>
             </button>
           </div>
-          <div class="row" style="justify-content: flex-start; padding-top: 20px;">
-            <input @input="e => updateConfig('overwrite_downloads', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.overwriteDownloads">
-            <p style="margin-left: 8px;">Overwrite Existing Files</p>
-          </div>
         </template>
       </SettingsGroup>
       <SettingsGroup :body-as-column="true" class="group-file-template">
@@ -129,101 +125,107 @@ async function setLocalFilesPath() {
           <h1>Deezer Tags</h1>
         </template>
         <template #body>
-          <div class="row" style="flex-grow: 1;">
-            <div class="column" style="flex-basis: 50%; align-self: flex-start;">
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_title', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTitle">
-                <span>Title</span>
+          <div class="frame" style="padding: 15px;">
+            <div class="row" style="flex-grow: 1;">
+              <div class="column" style="flex-basis: 50%; align-self: flex-start;">
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_title', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTitle">
+                  <span>Title</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzArtist">
+                  <span>Artist</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_album', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbum">
+                  <span>Album</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_track_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTrackNumber">
+                  <span>Track Number</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_track_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTrackTotal">
+                  <span>Track Total</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_disk_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiskNumber">
+                  <span>Disk Number</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_disk_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiskTotal">
+                  <span>Disk Total</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_album_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbumArtist">
+                  <span>Album Artist</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_genre', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzGenre">
+                  <span>Genre</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzYear">
+                  <span>Year</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_date', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDate">
+                  <span>Date</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_original_date', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzOriginalDate">
+                  <span>Original Date</span>
+                </div>
               </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzArtist">
-                <span>Artist</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_album', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbum">
-                <span>Album</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_track_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTrackNumber">
-                <span>Track Number</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_track_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzTrackTotal">
-                <span>Track Total</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_disk_number', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiskNumber">
-                <span>Disk Number</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_disk_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDiskTotal">
-                <span>Disk Total</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_album_artist', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzAlbumArtist">
-                <span>Album Artist</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_genre', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzGenre">
-                <span>Genre</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzYear">
-                <span>Year</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_date', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzDate">
-                <span>Date</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_itunesadvisory', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzItunesadvisory">
-                <span>Explicit Lyrics</span>
-              </div>
-            </div>
-            <div class="column" style="justify-content: flex-start; align-self: flex-start;">
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_isrc', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzIsrc">
-                <span>ISRC</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_length', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLength">
-                <span>Track Length</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_barcode', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBarcode">
-                <span>Album Barcode (UPC)</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_bpm', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBpm">
-                <span>BPM</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_replaygain_track_gain', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzReplaygainTrackGain">
-                <span>Replay Gain</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_label', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLabel">
-                <span>Label</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLyrics">
-                <span>Lyrics</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_copyright', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzCopyright">
-                <span>Copyright</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_composer', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzComposer">
-                <span>Composer</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_performer', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzPerformer">
-                <span>Performer</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_dz_source_id', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzSourceId">
-                <span>Deezer Song ID</span>
+              <div class="column" style="justify-content: flex-start; align-self: flex-start;">
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_itunesadvisory', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzItunesadvisory">
+                  <span>Explicit Lyrics</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_isrc', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzIsrc">
+                  <span>ISRC</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_length', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLength">
+                  <span>Track Length</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_barcode', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBarcode">
+                  <span>Album Barcode (UPC)</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_bpm', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBpm">
+                  <span>BPM</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_replaygain_track_gain', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzReplaygainTrackGain">
+                  <span>Replay Gain</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_label', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLabel">
+                  <span>Label</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLyrics">
+                  <span>Lyrics</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_copyright', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzCopyright">
+                  <span>Copyright</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_composer', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzComposer">
+                  <span>Composer</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_performer', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzPerformer">
+                  <span>Performer</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_dz_source_id', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzSourceId">
+                  <span>Deezer Song ID</span>
+                </div>
               </div>
             </div>
           </div>
@@ -235,44 +237,52 @@ async function setLocalFilesPath() {
           <h1>Other</h1>
         </template>
         <template #body>
-          <div class="row" style="justify-content: start;">
-            <span style="margin-right: 8px;">Separate Retrieved Tags Using</span>
+          <div class="row" style="justify-content: start; margin-bottom: 16px;">
+            <span style="margin-right: 8px;">Tags Separator</span>
             <select name="select-tag-separator" :value="appConfig.tagSeparator" @change="e => {updateConfig('tag_separator', e.target.value); globalEmitter.emit('instant-notification-add', { type: 'Info', origin: 'Settings', msg: 'Setting Updated!' });}">
               <option v-for="(sep, i) in tagSeparators" :key="i" :value="sep">"{{ sep }}"</option>
             </select>
           </div>
-          <div class="row" style="justify-content: flex-start;">
-            <input @input="e => updateConfig('tag_prefer_sync_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPreferSyncLyrics">
-            <p style="margin-left: 8px;">Prefer Synchronized Lyrics when Available</p>
-          </div>
-          <p style="text-align: start; margin-bottom: 4px; margin-top: 4px;">Add Padding to the Following Tags:</p>
-          <div class="row" style="justify-content: start;">
-            <div class="column" style="align-items: start; flex-basis: 50%; gap: 4px;">
-              <div class="row">
-                <input @input="e => updateConfig('tag_pad_track', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadTrack">
-                <span>Track</span>
-              </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_pad_track_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadTrackTotal">
-                <span>Track Total</span>
-              </div>
-              <div class="row">
-                <span style="margin-right: 8px;">Character</span>
-                <input @change="e => updateConfig('tag_pad_track_char', e.target.value)" type="text" maxlength="1" class="input-number" :value="appConfig.tagPadTrackChar">
-              </div>
+          <div class="frame"  style="padding: 15px; margin-bottom: 15px;">
+            <div class="row" style="justify-content: flex-start;">
+              <input @input="e => updateConfig('overwrite_downloads', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.overwriteDownloads">
+              <span style="margin-left: 8px;">Overwrite existing files when downloading</span>
             </div>
-            <div class="column" style="align-items: start; gap: 4px;">
-              <div class="row">
-                <input @input="e => updateConfig('tag_pad_disk', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDisk">
-                <span>Disk</span>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px;">
+              <input @input="e => updateConfig('tag_prefer_sync_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPreferSyncLyrics">
+              <span style="margin-left: 8px;">Prefer synchronized lyrics when available</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px;">
+              <input @input="e => updateConfig('tag_date_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDateAsYear">
+              <span style="margin-left: 8px;">Retrieve DATE with YYYY format</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px;">
+              <input @input="e => updateConfig('tag_originaldate_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagOriginaldateAsYear">
+              <span style="margin-left: 8px;">Retrieve ORIGINALDATE with YYYY format</span>
+            </div>
+          </div>
+          <div class="frame" style="padding: 15px;">
+            <p style="text-align: start; margin-bottom: 10px; margin-top: 0px;">Add Padding to the Following Tags:</p>
+            <div class="row" style="justify-content: start;">
+              <div class="column" style="align-items: start; flex-basis: 50%; gap: 4px;">
+                <div class="row">
+                  <input @input="e => updateConfig('tag_pad_track', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadTrack">
+                  <span>Track</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_pad_track_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadTrackTotal">
+                  <span>Track Total</span>
+                </div>
               </div>
-              <div class="row">
-                <input @input="e => updateConfig('tag_pad_disk_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDiskTotal">
-                <span>Disk Total</span>
-              </div>
-              <div class="row">
-                <span style="margin-right: 8px;">Character</span>
-                <input @change="e => updateConfig('tag_pad_disk_char', e.target.value)" type="text" maxlength="1" class="input-number" :value="appConfig.tagPadDiskChar">
+              <div class="column" style="align-items: start; gap: 4px;">
+                <div class="row">
+                  <input @input="e => updateConfig('tag_pad_disk', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDisk">
+                  <span>Disk</span>
+                </div>
+                <div class="row">
+                  <input @input="e => updateConfig('tag_pad_disk_total', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPadDiskTotal">
+                  <span>Disk Total</span>
+                </div>
               </div>
             </div>
           </div>
@@ -346,14 +356,6 @@ h1 {
 
 .row input + span {
   margin-left: 8px;
-}
-
-.input-number {
-  width: 20px;
-  padding: 1px 5px;
-  border: 0px;
-  border-radius: 2px;
-  text-align: center;
 }
 
 </style>

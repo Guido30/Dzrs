@@ -25,6 +25,8 @@ const infoItemsIds = computed({
 });
 
 async function searchTracks() {
+  if (inputElement.value.value.length === 0) return;
+
   slavartItems.value = [];
   isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
@@ -127,6 +129,10 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.container {
+  height: calc(100vh - 70px);
+}
+
 .frame {
   overflow-y: auto;
   overflow-x: hidden;
