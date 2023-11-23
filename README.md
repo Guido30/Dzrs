@@ -35,4 +35,4 @@ So feel free to open an issue or fork the project it ever stops working.
 
 ## License
 
-This software is free to use. Refer to the [LICENSE](LICENSE) for more details.
+This software is free to use. Refer to the [LICENSE](LICENSE.md) for more details.
