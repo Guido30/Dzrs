@@ -100,7 +100,7 @@ async function setLocalFilesPath() {
           </div>
           <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start; flex-wrap: wrap;">
             <p>Available Variables:</p>
-            <p v-for="item in filterColumnsDownload" :key="item.id" @click="copyEventTargetToClipboard">{{ `%${item.key}%` }}</p>
+            <p v-for="item in filterColumnsDownload" :key="item.id" v-tooltip="{ content:'Copied!', triggers: ['click'], hideTriggers: ['hover'] }" @click="copyEventTargetToClipboard">{{ `%${item.key}%` }}</p>
           </div>
         </template>
       </SettingsGroup>

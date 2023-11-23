@@ -1,5 +1,13 @@
 <script setup>
+import { ref, onMounted } from "vue";
 import { IconBrandGithub } from "@tabler/icons-vue";
+import { getVersion } from '@tauri-apps/api/app';
+
+const appVersion = ref();
+
+onMounted(async () => {
+  appVersion.value = await getVersion().then((ver) => ver);
+});
 </script>
 
 <template>
@@ -9,8 +17,9 @@ import { IconBrandGithub } from "@tabler/icons-vue";
         <div class="row">
           <img src="../assets/logox256.png" style="margin-right: 20px; user-select: none;">
           <div class="column" style="padding-left: 40px; text-align: left; border-left: 1px solid var(--color-text);">
-            <h1 >Dzrs</h1>
-            <p style="margin-top: 0px;">Made by Guido30</p>
+            <h1>Dzrs</h1>
+            <p style="margin-top: 0px; margin-bottom: 0px;">Made by Guido30</p>
+            <span>v{{ appVersion }}</span>
           </div>
         </div>
         <div class="column" style="align-items: start; padding-left: 40px;">

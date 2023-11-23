@@ -1,6 +1,8 @@
-# Dzrs
+<p align="center">
+    <img src="images/PreviewLogo.png" width=150px/>
+</p>
 
-Dzrs is a music downloader and metadata editor for flac files.
+### DISCLAIMER: Currently work in progress, while downloading works (when slavart decides to fix their backend), tagging needs some work, unhandled tags cant be viewed or modified, the sources panel isnt implemented yet, and overall a lot of features need to be added/fixed.
 
 ## Features
 
@@ -12,9 +14,18 @@ Dzrs is a music downloader and metadata editor for flac files.
 
 ## Getting Started
 
-Head over to the [releases](https://github.com/Guido30/Dzrs/releases) page and download the prebuilt binary.
+Head over to the [releases](https://github.com/Guido30/Dzrs/releases) page and download the installer.
 
 Linux support is not tested, tecnically it should work, but you would have build the executable yourself, which requires you to have knowledge of cargo and rust in general.
+
+## Preview
+
+<p align="center">
+    <img src="images/Preview1.png"/>
+</p>
+<p align="center">
+    <img src="images/Preview2.png"/>
+</p>
 
 ## Notice
 

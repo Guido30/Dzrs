@@ -52,6 +52,10 @@ impl From<Search> for SlavartDownloadItems {
             .items
             .into_iter()
             .map(|item| {
+                let title = match item.version {
+                    Some(ver) => item.title + " (" + ver.as_str() + ")",
+                    None => item.title,
+                };
                 let album_date = DateTime::<Utc>::from(
                     UNIX_EPOCH + Duration::from_secs(item.album.released_at.abs() as u64),
                 )
@@ -64,7 +68,7 @@ impl From<Search> for SlavartDownloadItems {
                     genre: item.album.genre.name,
                     album_title: item.album.title,
                     duration: item.duration,
-                    title: item.title,
+                    title: title,
                     id: item.id,
                     bit_depth: item.maximum_bit_depth,
                     sampling_rate: item.maximum_sampling_rate,

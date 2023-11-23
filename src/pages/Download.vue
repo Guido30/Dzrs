@@ -121,8 +121,8 @@ onMounted(() => {
           <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
         </div>
         <div class="row downloads-btns">
-            <IconFolder @click="openFileBrowser(appConfig.downloadPath)" size="30" style="cursor: pointer;" class="icon"/>
-            <IconTrash @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
+            <IconFolder v-tooltip="'Open Downloads'" @click="openFileBrowser(appConfig.downloadPath)" size="30" style="cursor: pointer;" class="icon"/>
+            <IconTrash v-tooltip="'Clear Queue'" @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
   </div>

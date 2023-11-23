@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, onBeforeMount } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
@@ -249,7 +249,7 @@ onMounted(async () => {
             </div>
           </button>
           <button style="padding: 2px 8px;" @click="getDzrsTracksFromSelection" :disabled="tagsFetching">
-            <div class="row" style="color: var(--color-text);">
+            <div class="row" style="color: var(--color-text);" v-tooltip.bottom="{ content: 'Retrieve Deezer Tags' }">
               Fetch
               <IconClipboardList v-if="!tagsFetching" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
               <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px;"/>
@@ -296,11 +296,11 @@ onMounted(async () => {
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ (file.size / (1024 * 1024)).toFixed(1) }} MB</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">{{ file.extension }}</td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">
-                    <IconProgressCheck v-if="file.tagStatus === 'Finalized'" color="var(--color-success)"/>
-                    <IconProgressBolt v-else-if="file.tagStatus === 'Matched'" color="#578867"/>
-                    <IconProgressHelp v-else-if="file.tagStatus === 'Successfull'" color="#998f40"/>
-                    <IconProgressAlert v-else-if="file.tagStatus === 'Unsuccessfull'" color="var(--color-error)"/>
-                    <IconProgress v-else color="#8c8c8c"/>
+                    <IconProgressCheck v-if="file.tagStatus === 'Finalized'" color="var(--color-success)" v-tooltip="'File Saved'"/>
+                    <IconProgressBolt v-else-if="file.tagStatus === 'Matched'" color="#578867" v-tooltip="'Good Match Applied'"/>
+                    <IconProgressHelp v-else-if="file.tagStatus === 'Successfull'" color="#998f40" v-tooltip="'Multiple Candidates Found'"/>
+                    <IconProgressAlert v-else-if="file.tagStatus === 'Unsuccessfull'" color="var(--color-error)" v-tooltip="'No Tags Found'"/>
+                    <IconProgress v-else color="#8c8c8c" v-tooltip="'Tags not Fetched'"/>
                   </td>
                 </tr>
               </template>
@@ -312,9 +312,9 @@ onMounted(async () => {
         <div class="sources-header">
           <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Sources</p>
         </div>
-        <div v-for="source in activeDzrsTrack.tagCandidates" :key="item.id"></div>
+        <div v-for="(i, source) in activeDzrsTrack.tagCandidates" :key="i"></div>
         <div class="row sources-footer">
-            <IconRestore @click="" size="25" style="cursor: pointer;" class="icon"/>
+            <IconRestore v-tooltip="'Restore Original Tags'" @click="" size="25" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
     </div>
@@ -732,5 +732,9 @@ p {
   font-size: 1em;
   font-weight: 400;
   user-select: none;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
 }
 </style>

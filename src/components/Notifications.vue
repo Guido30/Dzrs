@@ -41,7 +41,7 @@ watch(hasNotifications, async (value, _) => {
             </div>
         </div>
         <div class="row notifications-footer">
-            <IconTrash size="30" class="icon-trash" @click="notifications = []"/>
+            <IconTrash v-tooltip="'Clear Notifications'" size="30" class="icon-trash" @click="notifications = []"/>
         </div>
     </div>
 </template>
