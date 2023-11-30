@@ -2,7 +2,7 @@
     <img src="images/PreviewLogo.png" width=150px/>
 </p>
 
-### DISCLAIMER: Currently work in progress, while downloading works (when slavart decides to fix their backend), tagging needs some work, unhandled tags cant be viewed or modified, the sources panel isnt implemented yet, and overall a lot of features need to be added/fixed.
+### DISCLAIMER: Currently work in progress, while downloading works (when slavart decides to fix their backend), tagging still needs some work, the sources panel isnt implemented yet, and overall a lot of features need to be added/fixed.
 
 ## Features
 

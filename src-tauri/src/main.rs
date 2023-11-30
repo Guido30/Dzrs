@@ -7,8 +7,7 @@ mod models;
 
 use config::DzrsConfiguration;
 use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::{DzrsTrack, DzrsTracks, FromWithConfig, TrackTags};
-use models::dzrs_types::NotificationAdd;
+use models::dzrs_tracks::{DzrsTrack, DzrsTracks, TrackTags};
 use models::slavart::SlavartDownloadItems;
 use models::slavart_api::Search;
 
@@ -76,17 +75,13 @@ async fn update_dzrs_tracks(
 
 #[tauri::command]
 async fn get_slavart_tracks(query: String) -> Result<SlavartDownloadItems, String> {
-    let response = reqwest::get(format!(
-        "https://slavart.gamesdrive.net/api/search?q={query}"
-    ))
-    .await;
+    let response = reqwest::get(format!("https://slavart.gamesdrive.net/api/search?q={query}")).await;
     match response {
         Ok(r) => {
             let body = r.text().await;
             match body {
                 Ok(b) => {
-                    let search: Result<Search, serde_json::Error> =
-                        serde_json::from_str(b.as_str());
+                    let search: Result<Search, serde_json::Error> = serde_json::from_str(b.as_str());
                     match search {
                         Ok(s) => {
                             let tracks = SlavartDownloadItems::from(s);
@@ -109,8 +104,8 @@ async fn download_track(
     configuration: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<(), String> {
     let url = format!("https://slavart-api.gamesdrive.net/api/download/track?id={id}");
-    let file_path = PathBuf::from(configuration.lock().unwrap().download_path.clone())
-        .join(format!("{}.flac", filename));
+    let file_path =
+        PathBuf::from(configuration.lock().unwrap().download_path.clone()).join(format!("{}.flac", filename));
     if file_path.exists() && (configuration.lock().unwrap().overwrite_downloads == "false") {
         return Err(format!(
             "File {:?} already exists",
@@ -128,11 +123,7 @@ async fn download_track(
     let bytes = response.bytes().await.unwrap();
     let res_length = bytes.len();
     if content_length != res_length as u64 || res_length <= 1024 {
-        return Err(format!(
-            "Download failed, received {} / {} bytes",
-            res_length, content_length
-        )
-        .into());
+        return Err(format!("Download failed, received {} / {} bytes", res_length, content_length).into());
     };
     let mut file = match File::create(file_path) {
         Ok(file) => file,
@@ -146,9 +137,7 @@ async fn download_track(
 }
 
 #[tauri::command]
-async fn get_config_values(
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<String, String> {
+async fn get_config_values(configuration: State<'_, Mutex<DzrsConfiguration>>) -> Result<String, String> {
     let conf = configuration.lock().unwrap().clone();
     match serde_json::to_string(&conf) {
         Ok(res) => Ok(res),
@@ -200,9 +189,7 @@ async fn watch_directory(
     })
     .unwrap();
 
-    watcher
-        .watch(path.as_path(), RecursiveMode::NonRecursive)
-        .unwrap();
+    watcher.watch(path.as_path(), RecursiveMode::NonRecursive).unwrap();
 
     let mut guard = watcher_state.lock().unwrap();
     *guard = Some(watcher);

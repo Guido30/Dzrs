@@ -17,8 +17,8 @@
         "visible": false,
         "width": 1200,
         "height": 1000,
-        "minWidth": 900,
-        "minHeight": 700,
+        "minWidth": 1200,
+        "minHeight": 1080,
         "title": "Dzrs"
       }
     ],

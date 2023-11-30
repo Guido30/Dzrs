@@ -26,10 +26,10 @@ fn update_vorbis_with_tags<'a>(vorbis: &'a mut VorbisComments, tags: TrackTags) 
     vorbis.set_album(tags.album);
     vorbis.set_genre(tags.genre);
     vorbis.set_comment(tags.comment);
-    vorbis.set_track(tags.track_number.parse().unwrap()); // needs handling
-    vorbis.set_track_total(tags.track_total.parse().unwrap()); // needs handling
-    vorbis.set_disk(tags.disk_number.parse().unwrap()); // needs handling
-    vorbis.set_disk_total(tags.disk_total.parse().unwrap()); // needs handling
+    vorbis.set_track(tags.track_number.parse().unwrap_or_default()); // needs handling
+    vorbis.set_track_total(tags.track_total.parse().unwrap_or_default()); // needs handling
+    vorbis.set_disk(tags.disk_number.parse().unwrap_or_default());
+    vorbis.set_disk_total(tags.disk_total.parse().unwrap_or_default()); // needs handling
     vorbis.insert("ALBUMARTIST".to_string(), tags.album_artist);
     vorbis.insert("COMPOSER".to_string(), tags.composer);
     vorbis.insert("PERFORMER".to_string(), tags.performer);
@@ -44,24 +44,19 @@ fn update_vorbis_with_tags<'a>(vorbis: &'a mut VorbisComments, tags: TrackTags) 
     vorbis.insert("BARCODE".to_string(), tags.barcode);
     vorbis.insert("ISRC".to_string(), tags.isrc);
     vorbis.insert("BPM".to_string(), tags.bpm);
-    vorbis.insert(
-        "REPLAYGAIN_ALBUM_GAIN".to_string(),
-        tags.replaygain_album_gain,
-    );
-    vorbis.insert(
-        "REPLAYGAIN_ALBUM_PEAK".to_string(),
-        tags.replaygain_album_peak,
-    );
-    vorbis.insert(
-        "REPLAYGAIN_TRACK_GAIN".to_string(),
-        tags.replaygain_track_gain,
-    );
-    vorbis.insert(
-        "REPLAYGAIN_TRACK_PEAK".to_string(),
-        tags.replaygain_track_peak,
-    );
+    vorbis.insert("REPLAYGAIN_ALBUM_GAIN".to_string(), tags.replaygain_album_gain);
+    vorbis.insert("REPLAYGAIN_ALBUM_PEAK".to_string(), tags.replaygain_album_peak);
+    vorbis.insert("REPLAYGAIN_TRACK_GAIN".to_string(), tags.replaygain_track_gain);
+    vorbis.insert("REPLAYGAIN_TRACK_PEAK".to_string(), tags.replaygain_track_peak);
     vorbis.insert("SOURCEID".to_string(), tags.source_id);
     vorbis.insert("ENCODER".to_string(), tags.encoder);
+    for item in tags.extra_tags {
+        if let Some(tag_value) = vorbis.get(&item.0) {
+            if tag_value != &item.1 {
+                vorbis.insert(item.0, item.1);
+            };
+        };
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -120,6 +115,7 @@ pub struct TrackTags {
     replaygain_track_peak: String,
     source_id: String,
     encoder: String,
+    extra_tags: Vec<(String, String)>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -134,7 +130,15 @@ pub struct DzrsTrackPicture {
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct DzrsTrackTagCandidate {}
+pub struct DzrsTrackTagCandidate {
+    id: u64,
+    title: String,
+    link: String,
+    duration: u64,
+    artist: String,
+    album: String,
+    cover: String,
+}
 
 impl DzrsTracks {
     pub fn add(&mut self, track: DzrsTrack) {
@@ -153,12 +157,7 @@ impl DzrsTracks {
         self.iter_mut().find(|track| track.path == path)
     }
 
-    pub async fn update(
-        &mut self,
-        paths: Vec<String>,
-        config: &DzrsConfigurationParsed,
-        fetch_deezer_tags: bool,
-    ) {
+    pub async fn update(&mut self, paths: Vec<String>, config: &DzrsConfigurationParsed, fetch_deezer_tags: bool) {
         for path in paths {
             match self.get_track(path.clone()) {
                 Some(_) => {
@@ -183,10 +182,7 @@ impl DzrsTracks {
 
     pub fn save_tags(self, path: String, tags: TrackTags) -> Result<(), String> {
         if let None = self.get_track(path.clone()) {
-            return Err(format!(
-                "Track currently not loaded for path {}",
-                path.clone()
-            ));
+            return Err(format!("Track currently not loaded for path {}", path.clone()));
         }
         let mut flac = match read_flac(path.clone()) {
             Ok(f) => f,
@@ -209,19 +205,22 @@ impl DzrsTrack {
         let mut dzrs_track = Self::from_with_config(path, config);
 
         let deezer = Deezer::new();
-        let track_id = match deezer
-            .search_track(
-                &dzrs_track.tags.title,
-                &dzrs_track.tags.artist,
-                &dzrs_track.tags.album,
-                false,
-            )
-            .await
-        {
+        let query = format!(
+            r#"track:"{}" album:"{}" artist:"{}""#,
+            dzrs_track.tags.title, dzrs_track.tags.album, dzrs_track.tags.artist
+        );
+        let track_id = match deezer.search(&query, true).await {
             Ok(t) => {
-                dzrs_track.matched = true;
                 dzrs_track.fetched = true;
-                Some((t.id, t.album.id))
+                match t.len() {
+                    0 => None,
+                    _ => {
+                        dzrs_track.matched = true;
+                        dzrs_track.candidates = true;
+                        dzrs_track.tag_candidates = t.iter().map(|tr| DzrsTrackTagCandidate::from(tr)).collect();
+                        Some((t[0].id, t[0].album.id))
+                    }
+                }
             }
             Err(_) => {
                 dzrs_track.fetched = true;
@@ -498,11 +497,7 @@ impl FromWithConfig<String> for DzrsTrack {
             Ok(f) => f,
             Err(_) => return Self::default(),
         };
-        let pictures: Vec<DzrsTrackPicture> = flac
-            .pictures()
-            .into_iter()
-            .map(|p| DzrsTrackPicture::from_with_config(p, config))
-            .collect();
+        let pictures: Vec<DzrsTrackPicture> = flac.pictures().into_iter().map(|p| DzrsTrackPicture::from(p)).collect();
         let vorbis = flac.vorbis_comments().unwrap().clone();
         let tags = TrackTags::from_with_config(vorbis, &config);
         Self {
@@ -510,7 +505,7 @@ impl FromWithConfig<String> for DzrsTrack {
             tags: tags.clone(),
             pictures,
             tags_deezer: TrackTags::default(),
-            tag_candidates: vec![DzrsTrackTagCandidate::default()],
+            tag_candidates: Vec::new(),
             tags_to_save: tags,
             matched: false,
             fetched: false,
@@ -522,57 +517,61 @@ impl FromWithConfig<String> for DzrsTrack {
 impl FromWithConfig<VorbisComments> for TrackTags {
     fn from_with_config(vorbis: VorbisComments, config: &DzrsConfigurationParsed) -> Self {
         let sep = &config.tag_separator;
-        Self {
-            title: vorbis.title().unwrap_or_default().to_string(),
-            artist: vorbis.get_all("ARTIST").collect::<Vec<&str>>().join(sep),
-            barcode: vorbis.get("BARCODE").unwrap_or_default().to_string(),
-            album: vorbis.album().unwrap_or_default().to_string(),
-            album_artist: vorbis.get("ALBUMARTIST").unwrap_or_default().to_string(),
-            comment: vorbis.comment().unwrap_or_default().to_string(),
-            composer: vorbis.get_all("COMPOSER").collect::<Vec<&str>>().join(sep),
-            performer: vorbis.get_all("PERFORMER").collect::<Vec<&str>>().join(sep),
-            producer: vorbis.get_all("PRODUCER").collect::<Vec<&str>>().join(sep),
-            description: vorbis.get("DESCRIPTION").unwrap_or_default().to_string(),
-            genre: vorbis.genre().unwrap_or_default().to_string(),
-            lyrics: vorbis.get("LYRICS").unwrap_or_default().to_string(),
-            copyright: vorbis.get("COPYRIGHT").unwrap_or_default().to_string(),
-            track_number: vorbis.track().unwrap_or_default().to_string(),
-            track_total: vorbis.track_total().unwrap_or_default().to_string(),
-            disk_number: vorbis.disk().unwrap_or_default().to_string(),
-            disk_total: vorbis.disk_total().unwrap_or_default().to_string(),
-            date: vorbis.get("DATE").unwrap_or_default().to_string(),
-            original_date: vorbis.get("ORIGINALDATE").unwrap_or_default().to_string(),
-            label: vorbis.get_all("LABEL").collect::<Vec<&str>>().join(sep),
-            year: vorbis.year().unwrap_or_default().to_string(),
-            isrc: vorbis.get("ISRC").unwrap_or_default().to_string(),
-            bpm: vorbis.get("BPM").unwrap_or_default().to_string(),
-            replaygain_album_gain: vorbis
-                .get("REPLAYGAIN_ALBUM_GAIN")
-                .unwrap_or_default()
-                .to_string(),
-            replaygain_album_peak: vorbis
-                .get("REPLAYGAIN_ALBUM_PEAK")
-                .unwrap_or_default()
-                .to_string(),
-            replaygain_track_gain: vorbis
-                .get("REPLAYGAIN_TRACK_GAIN")
-                .unwrap_or_default()
-                .to_string(),
-            replaygain_track_peak: vorbis
-                .get("REPLAYGAIN_TRACK_PEAK")
-                .unwrap_or_default()
-                .to_string(),
-            source_id: vorbis.get("SOURCEID").unwrap_or_default().to_string(),
-            encoder: vorbis.get("ENCODER").unwrap_or_default().to_string(),
+        let mut track_tags = Self::default();
+        let mut artists: Vec<String> = Vec::new();
+        let mut composers: Vec<String> = Vec::new();
+        let mut performers: Vec<String> = Vec::new();
+        let mut producers: Vec<String> = Vec::new();
+        let mut labels: Vec<String> = Vec::new();
+        let mut extra_tags: Vec<(String, String)> = Vec::new();
+        let vorbis_tags = vorbis.items();
+        for item in vorbis_tags {
+            match item.0 {
+                "TITLE" => track_tags.title = item.1.to_string(),
+                "ARTIST" => artists.push(item.1.to_string()),
+                "BARCODE" => track_tags.barcode = item.1.to_string(),
+                "ALBUM" => track_tags.album = item.1.to_string(),
+                "ALBUMARTIST" => track_tags.album_artist = item.1.to_string(),
+                "COMMENT" => track_tags.comment = item.1.to_string(),
+                "COMPOSER" => composers.push(item.1.to_string()),
+                "PERFORMER" => performers.push(item.1.to_string()),
+                "PRODUCER" => producers.push(item.1.to_string()),
+                "DESCRIPTION" => track_tags.description = item.1.to_string(),
+                "GENRE" => track_tags.genre = item.1.to_string(),
+                "LYRICS" => track_tags.lyrics = item.1.to_string(),
+                "COPYRIGHT" => track_tags.copyright = item.1.to_string(),
+                "TRACKNUMBER" => track_tags.track_number = item.1.to_string(),
+                "TRACKTOTAL" => track_tags.track_total = item.1.to_string(),
+                "TOTALTRACKS" => track_tags.track_total = item.1.to_string(),
+                "DISCNUMBER" => track_tags.disk_number = item.1.to_string(),
+                "DISCTOTAL" => track_tags.disk_total = item.1.to_string(),
+                "TOTALDISCS" => track_tags.disk_total = item.1.to_string(),
+                "DATE" => track_tags.date = item.1.to_string(),
+                "ORIGINALDATE" => track_tags.original_date = item.1.to_string(),
+                "LABEL" => labels.push(item.1.to_string()),
+                "YEAR" => track_tags.year = item.1.to_string(),
+                "ISRC" => track_tags.isrc = item.1.to_string(),
+                "BPM" => track_tags.bpm = item.1.to_string(),
+                "REPLAYGAIN_ALBUM_GAIN" => track_tags.replaygain_album_gain = item.1.to_string(),
+                "REPLAYGAIN_ALBUM_PEAK" => track_tags.replaygain_album_peak = item.1.to_string(),
+                "REPLAYGAIN_TRACK_GAIN" => track_tags.replaygain_track_gain = item.1.to_string(),
+                "REPLAYGAIN_TRACK_PEAK" => track_tags.replaygain_track_peak = item.1.to_string(),
+                "SOURCEID" => track_tags.source_id = item.1.to_string(),
+                "ENCODER" => track_tags.encoder = item.1.to_string(),
+                _ => extra_tags.push((item.0.to_string(), item.1.to_string())),
+            };
         }
+        track_tags.artist = artists.join(sep);
+        track_tags.composer = composers.join(sep);
+        track_tags.performer = performers.join(sep);
+        track_tags.producer = producers.join(sep);
+        track_tags.extra_tags = extra_tags;
+        track_tags
     }
 }
 
-impl FromWithConfig<&(Picture, PictureInformation)> for DzrsTrackPicture {
-    fn from_with_config(
-        value: &(Picture, PictureInformation),
-        config: &DzrsConfigurationParsed,
-    ) -> Self {
+impl From<&(Picture, PictureInformation)> for DzrsTrackPicture {
+    fn from(value: &(Picture, PictureInformation)) -> Self {
         let data = value.0.data();
         let b64 = general_purpose::STANDARD.encode(data);
         let pic_type = format!("{:?}", value.0.pic_type());
@@ -583,6 +582,21 @@ impl FromWithConfig<&(Picture, PictureInformation)> for DzrsTrackPicture {
             description,
             width: value.1.width,
             height: value.1.height,
+        }
+    }
+}
+
+impl From<&deezer_api::Track> for DzrsTrackTagCandidate {
+    fn from(value: &deezer_api::Track) -> Self {
+        let value = value.clone();
+        Self {
+            id: value.id,
+            title: value.title,
+            link: value.link.unwrap_or_default(),
+            duration: value.duration,
+            artist: value.artist.name,
+            album: value.album.title,
+            cover: value.album.cover,
         }
     }
 }

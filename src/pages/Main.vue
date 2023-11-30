@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
 import { isEqual } from 'lodash';
-import { IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
+import { IconCircleCheck, IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
 import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser, emptyTrack } from "../helpers";
 
@@ -157,7 +157,7 @@ function updateDzrsFilesStatus() {
       status = "Finalized"
     } else if (track.matched) {
       status = "Matched"
-    } else if (track.fetched) {
+    } else if (track.fetched && track.candidates) {
       status = "Successfull"
     } else if (track.fetched && !track.candidates) {
       status = "Unsuccessfull"
@@ -309,10 +309,29 @@ onMounted(async () => {
         </div>
       </div>
       <div class="source-panel frame">
-        <div class="sources-header">
+        <div class="sources-header" style="margin-bottom: 2px">
           <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Sources</p>
         </div>
-        <div v-for="(i, source) in activeDzrsTrack.tagCandidates" :key="i"></div>
+        <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto;">
+          <div v-for="(source, i) in activeDzrsTrack.tagCandidates" :key="i" class="row sources-item" style="border: 1px solid var(--color); padding: 5px;">
+            <a :href="source.link" target="_blank">
+              <img :src="source.cover" width="80" height="80">
+            </a>
+            <div class="column" style="flex-grow: 1; text-align: left;">
+              <div class="row">
+                <p><span>Title:</span> {{ source.title }}</p>
+                <IconCircleCheck size="25" class="icon icon-check" v-tooltip="'Apply'"/>
+              </div>
+              <div class="row">
+                <p><span>Album:</span> {{ source.album }}</p>
+              </div>
+              <div class="row">
+                <p><span>Artist:</span> {{ source.artist }}</p>
+                <p style="flex-grow: 0; text-align: right;"><span>Length:</span> {{ `${Math.floor(source.duration / 60)}:${(source.duration % 60).toString().padStart(2, "0")}` }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="row sources-footer">
             <IconRestore v-tooltip="'Restore Original Tags'" @click="" size="25" style="cursor: pointer;" class="icon"/>
         </div>
@@ -421,11 +440,6 @@ onMounted(async () => {
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.diskTotal !== activeDzrsTrack.tags.diskTotal}" v-model="activeDzrsTrack.tagsToSave.diskTotal"></textarea></div></td>
                 </tr>
                 <tr>
-                  <th>Length</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly></textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text"></textarea></div></td>
-                </tr>
-                <tr>
                   <th>Date</th>
                   <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.date }}</textarea></div></td>
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.date !== activeDzrsTrack.tags.date}" v-model="activeDzrsTrack.tagsToSave.date"></textarea></div></td>
@@ -490,6 +504,14 @@ onMounted(async () => {
                   <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.encoder }}</textarea></div></td>
                   <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.encoder !== activeDzrsTrack.tags.encoder}" v-model="activeDzrsTrack.tagsToSave.encoder"></textarea></div></td>
                 </tr>
+                <tr>
+                  <th style="border-top: 1px solid var(--color-bg-2);" colspan="3">Other Tags</th>
+                </tr>
+                <tr v-for="(extraTag, i) in activeDzrsTrack.tags.extraTags">
+                  <th>{{ extraTag[0] }}</th>
+                  <td><div><textarea spellcheck="false" type="text" readonly>{{ extraTag[1] }}</textarea></div></td>
+                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': extraTag[1] !== activeDzrsTrack.tagsToSave.extraTags[i][1]}" v-model="activeDzrsTrack.tagsToSave.extraTags[i][1]"></textarea></div></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -504,6 +526,11 @@ onMounted(async () => {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+}
+
+.source-panel {
+  flex-basis: 400px;
+  flex-grow: 0 !important;
 }
 
 .directory-panel .frame {
@@ -666,6 +693,40 @@ p {
   bottom: 0px;
   background-color: var(--color-bg-1);
   transition: all 0.2s ease;
+}
+
+.sources-item {
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.sources-item:hover {
+  background-color: var(--color-bg-2);
+}
+
+.sources-item img {
+  display: block;
+  margin-bottom: auto;
+  margin-top: auto;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.sources-item p {
+  /* max-width: ; */
+  padding-left: 15px;
+  flex-grow: 1;
+  text-wrap: nowrap;
+}
+
+.sources-item p span {
+  opacity: 0.5;
+  font-style: italic;
+  user-select: none;
+}
+
+.icon-check {
+  cursor: pointer;
 }
 
 .img-container, .img-container * {
