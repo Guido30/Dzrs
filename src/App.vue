@@ -34,14 +34,15 @@ appWindow.listen("page-change", (event) => {
 onMounted(async () => {
   // Prevent default browser context menu
   document.addEventListener("contextmenu", (event) => event.preventDefault());
-  await invoke("show_window");
   const path = appConfig.directoryViewPath;
   if (path) {
-    await invoke("watch_directory", { path: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_directory", msg: err }));
+    await invoke("watch_dir", { dir: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_directory", msg: err }));
   }
   if (!appConfig._loaded) {
     globalEmitter.emit("notification-add", { type: "Info", origin: "Config", msg: "Config file could not be loaded! Ignore this message if its the first time running Dzrs" });
   }
+  // Finally when everything is initialized, show the main window
+  await appWindow.show();
 });
 </script>
 
@@ -142,6 +143,10 @@ body {
   margin-top: auto;
   margin-bottom: auto;
   flex-shrink: 0;
+}
+
+.icon:focus {
+  outline: none;
 }
 
 input,

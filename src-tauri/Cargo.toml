@@ -12,17 +12,22 @@ tauri-build = { version = "1.4", features = [] }
 
 [dependencies]
 tauri = { version = "1.4", features = [
+    "window-show",
+    "dialog-save",
+    "dialog-ask",
+    "dialog-message",
+    "dialog-confirm",
+    "dialog-open",
     "path-all",
-    "dialog-all",
     "clipboard-all",
     "shell-open",
     "dialog",
 ] }
 serde = { version = "1.0", features = ["derive"] }
+notify = { version = "6.1.1", features = ["serde"] }
 serde_json = "1.0"
 reqwest = "0.11.18"
 chrono = "0.4.26"
-notify = "6.1.1"
 lofty = "0.15.0"
 base64 = "0.21.4"
 deezerapi-rs = { git = "https://github.com/Guido30/DeezerApi-RS.git", branch = "main" }

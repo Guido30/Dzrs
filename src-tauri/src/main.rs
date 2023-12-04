@@ -17,7 +17,7 @@ use std::env::consts::OS;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, Window};
@@ -52,6 +52,20 @@ pub fn app_data_dir() -> PathBuf {
     path
 }
 
+pub fn browse<P: AsRef<Path>>(path: P) -> Result<(), String> {
+    let path = path.as_ref().to_str().unwrap();
+    let cmd = match OS {
+        "linux" => "xdg-open",
+        "macos" => "open",
+        "windows" => "explorer",
+        _ => return Err("Unsupported platform".into()),
+    };
+    match Command::new(cmd).arg(path).spawn() {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
 // Commands for manipulating the inner DzrsTrackObjectWrapper from front-end
 #[tauri::command]
 async fn tracks_clear(tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), ()> {
@@ -61,16 +75,40 @@ async fn tracks_clear(tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Resul
 }
 
 #[tauri::command]
-async fn tracks_replace(path: String, tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), String> {
+async fn tracks_replace(
+    path: String,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), String> {
+    let conf = configuration.lock().unwrap().parsed();
     let mut t = tracks.lock().unwrap();
-    t.replace_track(path)?;
+    t.replace_track(&path)?;
+    match t.get_track_obj_mut(&path) {
+        Some(tr) => {
+            // Try loading tags, error is ignored for non-flac
+            let _ = tr.load_tags(&conf);
+        }
+        None => (),
+    }
     Ok(())
 }
 
 #[tauri::command]
-async fn tracks_insert(path: String, tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), String> {
+async fn tracks_insert(
+    path: String,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), String> {
+    let conf = configuration.lock().unwrap().parsed();
     let mut t = tracks.lock().unwrap();
-    t.insert_track(path)?;
+    t.insert_track(&path)?;
+    match t.get_track_obj_mut(&path) {
+        Some(tr) => {
+            // Try loading tags, error is ignored for non-flac
+            let _ = tr.load_tags(&conf);
+        }
+        None => (),
+    }
     Ok(())
 }
 
@@ -82,8 +120,24 @@ async fn tracks_remove(path: String, tracks: State<'_, Mutex<DzrsTrackObjectWrap
 }
 
 #[tauri::command]
-async fn tracks_get(tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<Vec<DzrsTrackObject>, ()> {
-    Ok(tracks.lock().unwrap().items.clone())
+async fn tracks_get(
+    paths: Option<Vec<String>>,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+) -> Result<Vec<DzrsTrackObject>, ()> {
+    match paths {
+        Some(ps) => {
+            let t = tracks.lock().unwrap();
+            let mut trs = Vec::new();
+            for p in ps {
+                match t.get_track_obj(&p).map(|tr| tr.to_owned()) {
+                    Some(tr) => trs.push(tr),
+                    None => (),
+                }
+            }
+            Ok(trs)
+        }
+        None => Ok(tracks.lock().unwrap().items.clone()),
+    }
 }
 
 #[tauri::command]
@@ -212,9 +266,6 @@ async fn save_tags(
     tr.tags_pictures = track_.tags_pictures;
     tr.tags_to_save = track_.tags_to_save;
     tr.tags_status = DzrsTrackObjectTagState::Finalized;
-    // println!("{:?}\n{:?}\n{:?}", tr.file_path, tr.tags, tr.tags_to_save);
-    // TODO, THE FRONTEND IS RECEIVING THE NON UPDATED VERSION OF THE FILE
-    // WHICH MEANS THE CHANGES MIGHT NOT BE PERSISTED IN THE State<'_, Mutex<DzrsTrackObjectWrapper>>
     Ok(())
 }
 
@@ -281,49 +332,41 @@ async fn download_track(
     }
 }
 
+// Reinitializes a new file watcher using a given directory
+// To avoid unnecessary triggers when manipulating the inner DzrsTrackObjects from the frontend
+// the event kind of Modify will be ignored, the downside is that if the user manually renames
+// a file or modifies it in any way other than using dzrs, the changes will not be
+// immediately reflected in the frontend
 #[tauri::command]
-async fn show_window(window: Window) -> Result<(), String> {
-    match window.show() {
-        Ok(()) => Ok(()),
-        Err(err) => Err(err.to_string()),
-    }
-}
-
-#[tauri::command]
-async fn open_explorer(path: String) -> Result<(), String> {
-    let path: PathBuf = path.into();
-    let program: String = match OS {
-        "linux" => "xdg-open".into(),
-        "macos" => "open".into(),
-        "windows" => "explorer".into(),
-        _ => "".into(),
-    };
-    match Command::new(program).arg(path).spawn() {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.to_string()),
-    }
-}
-
-#[tauri::command]
-async fn watch_directory(
+async fn watch_dir(
     window: Window,
-    path: String,
-    watcher_state: State<'_, Arc<Mutex<Option<RecommendedWatcher>>>>,
+    dir: String,
+    watcher: State<'_, Arc<Mutex<Option<RecommendedWatcher>>>>,
 ) -> Result<(), String> {
-    let path = PathBuf::from(path);
-    let mut watcher: RecommendedWatcher = recommended_watcher(move |res| match res {
-        Ok(_) => {
-            let _ = window.emit("watcher_fired", "");
-        }
-        Err(e) => println!("watch error: {:?}", e),
-    })
-    .unwrap();
+    let mut w: RecommendedWatcher =
+        match recommended_watcher(move |res: Result<notify::Event, notify::Error>| match res {
+            Ok(e) => {
+                let _ = window.emit("watcher_triggered", e);
+            }
+            _ => (),
+        }) {
+            Ok(w) => w,
+            Err(err) => return Err(err.to_string()),
+        };
 
-    watcher.watch(path.as_path(), RecursiveMode::NonRecursive).unwrap();
+    w.watch(Path::new(&dir), RecursiveMode::NonRecursive).unwrap();
 
-    let mut guard = watcher_state.lock().unwrap();
-    *guard = Some(watcher);
+    let mut guard = watcher.lock().unwrap();
+    *guard = Some(w);
     Ok(())
+}
+
+#[tauri::command]
+async fn browse_cmd(path: String) -> Result<(), String> {
+    match browse(path) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
+    }
 }
 
 fn main() {
@@ -340,9 +383,17 @@ fn main() {
 
     tauri::Builder::default()
         .setup(|app| {
-            #[cfg(debug_assertions)] // Open Devtools in debug builds
+            let window = app.get_window("main").unwrap();
+            // Setup file watcher
+            // let mut w: RecommendedWatcher = recommended_watcher(move |res| match res {
+            //     Ok(e) => {
+            //         let _ = window.emit("watcher_triggered", e);
+            //     }
+            //     _ => (),
+            // });
+            // Open Devtools in debug builds
+            #[cfg(debug_assertions)]
             {
-                let window = app.get_window("main").unwrap();
                 window.open_devtools();
             }
             Ok(())
@@ -363,11 +414,10 @@ fn main() {
             config_set,
             tracks_fetch,
             save_tags,
-            show_window,
-            watch_directory,
-            open_explorer,
             get_slavart_tracks,
             download_track,
+            watch_dir,
+            browse_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running dzrs");

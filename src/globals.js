@@ -27,9 +27,6 @@ export function parseFileName(fileData, template) {
     .replaceAll(/[<>:"\/\\|?*]/g, " ");
   return fileName;
 }
-export async function openFileBrowser(path) {
-  await invoke("open_explorer", { path: path });
-}
 
 export const filterColumnsDownload = ref([
   { key: "title", label: "Title", config: "", readonly: true, enabled: true, width: 20 },

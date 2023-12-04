@@ -29,7 +29,7 @@
         "open": true
       },
       "dialog": {
-        "all": true,
+        "all": false,
         "ask": true,
         "confirm": true,
         "message": true,
@@ -43,19 +43,17 @@
       },
       "path": {
         "all": true
+      },
+      "window": {
+        "all": false,
+        "show": true
       }
     },
     "bundle": {
       "active": true,
       "targets": "all",
       "identifier": "com.guido30.dzrs",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ]
+      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
     },
     "security": {
       "csp": null

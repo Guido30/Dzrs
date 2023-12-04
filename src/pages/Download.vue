@@ -5,7 +5,7 @@ import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, 
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
-import { appConfig, globalEmitter, filterColumnsDownload, parseFileName, openFileBrowser } from "../globals";
+import { appConfig, globalEmitter, filterColumnsDownload, parseFileName } from "../globals";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
@@ -100,7 +100,7 @@ onMounted(() => {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody v-show="!isSearchPending">
               <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumnsDownload" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
             </tbody>
           </table>
@@ -116,7 +116,7 @@ onMounted(() => {
         <DownloadInfoItem @removeRequested="(id) => (infoItemsIds = id)" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
       </div>
       <div class="row downloads-btns">
-        <IconFolder v-tooltip="'Open Downloads'" @click="openFileBrowser(appConfig.downloadPath)" size="30" style="cursor: pointer" class="icon" />
+        <IconFolder v-tooltip="'Open Downloads'" @click="invoke('browse_cmd', { path: appConfig.downloadPath })" size="30" style="cursor: pointer" class="icon" />
         <IconTrash v-tooltip="'Clear Queue'" @click="infoItems = []" size="30" style="cursor: pointer" class="icon" />
       </div>
     </div>

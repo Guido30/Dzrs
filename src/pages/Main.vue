@@ -6,7 +6,7 @@ import { open, confirm } from "@tauri-apps/api/dialog";
 import { isEqual, remove as loRemove } from "lodash";
 import { IconExternalLink, IconCircleCheck, IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
-import { appConfig, globalEmitter, openFileBrowser, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
+import { appConfig, globalEmitter, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
 
 // Track objects
 const dzrsTrackObjects = ref([{}]);
@@ -31,6 +31,7 @@ const activeLocalFilesPath = ref(appConfig.directoryViewPath);
 
 // Visibility/interactivity toggles for various elements
 const showFilterMenu = ref(false);
+const tracksIsLoading = ref(false);
 const tagsIsFetchingOrSaving = ref(false);
 const tagsFetchingOrSavingEnabled = computed(() => {
   return activeDzrsTrackObject.value.fileExtension === "flac" ? true : false;
@@ -39,36 +40,58 @@ const tagsNeedSave = computed(() => {
   return dzrsTrackObjects.value.find((t) => !isEqual(t.tags, t.tagsToSave)) ? true : false;
 });
 
-// Obtain all track objects currently loaded in the backend
+// Obtain track objects currently loaded in the backend, all tracks will be loaded without providing paths
 // this operation needs to be manually called after invoking manipulating commands over the track objects in the backend
 // to ensure that they are always synchronized.
-async function getDzrsTrackObjects() {
-  const result = await invoke("tracks_get")
+// Three ways of using this:
+// 1 - getDzrsTrackObjects() : will get all tracks and fit the frontend to match
+// 2 - getDzrsTrackObjects(paths) : will get only tracks from the provided paths and fit the frontend to match
+// 3 - getDzrsTrackObjects(paths, remove) : will remove tracks from the provided paths and fit the frontend to match
+// For performance reasons the more specific approaches 2 and 3 should be used, serializing and deserializing
+// from backend to frontend is expensive especially with large amount of tracks
+async function getDzrsTrackObjects(paths, remove) {
+  // Remove tracks if requested then stop
+  if (remove) {
+    for (const p of paths) {
+      await invoke("tracks_remove", { path: p }).catch((_) => _);
+      const i = dzrsTrackObjects.value.findIndex((tr) => tr.filePath === p);
+      if (i !== -1) {
+        dzrsTrackObjects.value.splice(i, 1);
+      }
+    }
+    return;
+  }
+  // Get the stored tracks
+  const result = await invoke("tracks_get", { paths: paths ? paths : null })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjects", msg: err }));
   if (result) {
+    // Join tracks found in both frontend and backend
     result.forEach((newTr) => {
-      // Join tracks found in both frontend and backend
       const i = dzrsTrackObjects.value.findIndex((tr) => tr.filePath === newTr.filePath);
       if (i !== -1 && !isEqual(newTr, dzrsTrackObjects.value[i])) {
         dzrsTrackObjects.value[i] = newTr;
       } else if (i === -1) {
         dzrsTrackObjects.value.push(newTr);
       }
-      // Remove tracks in the frontend but NOT found in the backend
-      loRemove(dzrsTrackObjects.value, (tr) => !result.some((tr1) => tr1.filePath === tr.filePath));
     });
+    // Remove tracks in the frontend but NOT found in the backend
+    if (!paths) {
+      loRemove(dzrsTrackObjects.value, (tr) => !result.some((tr1) => tr1.filePath === tr.filePath));
+    }
   }
 }
 
 // Obtain all track objects from a given directory and loads them in the backend, this operation clears all pre-exising objects and reassigns the new ones
 async function getDzrsTrackObjectsDir() {
+  tracksIsLoading.value = true;
   const result = await invoke("tracks_get_dir", { dir: activeLocalFilesPath.value })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjectsDir", msg: err }));
   if (result) {
     dzrsTrackObjects.value = result;
   }
+  tracksIsLoading.value = false;
 }
 
 // Called when setting a new local files directory from the main panel, the track objects have to be reassigned to match the files in the new directory
@@ -148,7 +171,7 @@ async function fetchDzrsTrackObjects() {
     flacs = dzrsTrackObjects.value.filter((t) => t.fileExtension === "flac" && selectedFilePaths.value.includes(t.filePath)).map((f) => f.filePath);
   }
   await invoke("tracks_fetch", { paths: flacs }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "fetchDzrsTrackObjects", msg: err.join(" ") }));
-  await getDzrsTrackObjects();
+  await getDzrsTrackObjects(flacs);
   tagsIsFetchingOrSaving.value = false;
 }
 
@@ -163,23 +186,47 @@ async function saveModifiedTracks() {
       modifiedTracks = dzrsTrackObjects.value.filter((t) => !isEqual(t.tags, t.tagsToSave));
     }
     if (modifiedTracks.length !== 0) {
-      modifiedTracks.forEach(async (t) => await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err })));
-      await getDzrsTrackObjects();
+      for (const t of modifiedTracks) {
+        await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err }));
+      }
+      await getDzrsTrackObjects(modifiedTracks.map((t) => t.filePath));
     }
   }
 }
 
+// TODO
 async function fetchTagFromSource() {
   tagsIsFetchingOrSaving.value = true;
   tagsIsFetchingOrSaving.value = false;
 }
 
+// Starts listening to the file watcher initialized in the backend
+// for every event we send the appropriate request to the backend for syncronizing the
+// inner DzrsTrackObjects stored in memory to match the files
+async function listenFileWatcher() {
+  await appWindow.listen("watcher_triggered", async (e) => {
+    for (const p of e.payload.paths) {
+      if (Object.hasOwn(e.payload.type, "create")) {
+        await invoke("tracks_insert", { path: p });
+      } else if (Object.hasOwn(e.payload.type, "remove")) {
+        await invoke("tracks_remove", { path: p }).catch((_) => _);
+      } else if (Object.hasOwn(e.payload.type, "modify")) {
+        await invoke("tracks_replace", { path: p }).catch((_) => _);
+      }
+    }
+    if (Object.hasOwn(e.payload.type, "create") || Object.hasOwn(e.payload.type, "modify")) {
+      await getDzrsTrackObjects(e.payload.paths);
+    } else if (Object.hasOwn(e.payload.type, "remove")) {
+      await getDzrsTrackObjects(e.payload.paths, true);
+    }
+  });
+}
+
 onBeforeMount(async () => {
+  // At startup load files located in the configured directory
   await getDzrsTrackObjectsDir();
-  // NEEDS TO BE HANDELED BETTER
-  // appWindow.listen("watcher_fired", async () => {
-  //   await loadDzrsTrackObjects();
-  // });
+  // Initialize the listener for handling changes in the watched directory
+  await listenFileWatcher();
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".table-filter-btn")) {
       showFilterMenu.value = false;
@@ -202,7 +249,7 @@ onBeforeMount(async () => {
           <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px; margin-right: auto" class="button">
             {{ activeLocalFilesPath ? activeLocalFilesPath : "..." }}
           </p>
-          <button style="padding: 2px 8px; margin-left: auto" @click="async () => await openFileBrowser(appConfig.directoryViewPath)" v-show="appConfig.directoryViewPath">
+          <button style="padding: 2px 8px; margin-left: auto" @click="invoke('browse_cmd', { path: appConfig.directoryViewPath })" v-show="appConfig.directoryViewPath">
             <div class="row" style="color: var(--color-text)">
               Browse
               <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
@@ -244,7 +291,7 @@ onBeforeMount(async () => {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody v-show="!tracksIsLoading">
               <template v-for="file in dzrsTrackObjects" :key="file.filePath">
                 <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath) }">
                   <td>
@@ -262,16 +309,17 @@ onBeforeMount(async () => {
                     {{ file.fileExtension }}
                   </td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">
-                    <IconProgressCheck v-if="file.tagsStatus === 'finalized'" color="var(--color-success)" v-tooltip="'File Saved'" />
-                    <IconProgressBolt v-else-if="file.tagsStatus === 'matched'" color="#578867" v-tooltip="'Good Match Applied'" />
-                    <IconProgressHelp v-else-if="file.tagsStatus === 'successfull'" color="#998f40" v-tooltip="'Multiple Sources Found'" />
-                    <IconProgressAlert v-else-if="file.tagsStatus === 'unsuccessfull'" color="var(--color-error)" v-tooltip="'No Tags Found'" />
-                    <IconProgress v-else color="#8c8c8c" v-tooltip="'Tags not Fetched'" />
+                    <IconProgressCheck v-if="file.tagsStatus === 'finalized'" color="var(--color-success)" v-tooltip="'File Saved'" class="icon" />
+                    <IconProgressBolt v-else-if="file.tagsStatus === 'matched'" color="#578867" v-tooltip="'Good Match Applied'" class="icon" />
+                    <IconProgressHelp v-else-if="file.tagsStatus === 'successfull'" color="#998f40" v-tooltip="'Multiple Sources Found'" class="icon" />
+                    <IconProgressAlert v-else-if="file.tagsStatus === 'unsuccessfull'" color="var(--color-error)" v-tooltip="'No Tags Found'" class="icon" />
+                    <IconProgress v-else color="#8c8c8c" v-tooltip="'Tags not Fetched'" class="icon" />
                   </td>
                 </tr>
               </template>
             </tbody>
           </table>
+          <IconLoader2 size="60" class="icon-loading" v-show="tracksIsLoading" style="height: 78%" />
         </div>
       </div>
       <div class="source-panel frame">
@@ -309,7 +357,7 @@ onBeforeMount(async () => {
                 </div>
               </div>
               <div class="column sources-item-text-col" style="align-items: flex-end">
-                <IconCircleCheck size="25" class="icon-check" v-tooltip="'Apply'" @click="fetchTagFromSource" />
+                <IconCircleCheck size="25" class="icon icon-check" v-tooltip="'Apply'" @click="fetchTagFromSource" />
                 <p style="opacity: 0%; flex-grow: 0">EMPTY</p>
                 <p style="flex-grow: 0; text-align: right">
                   <span>Length:</span>
