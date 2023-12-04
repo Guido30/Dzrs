@@ -1,227 +1,187 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, computed, onBeforeMount } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
-import { isEqual } from 'lodash';
-import { IconCircleCheck, IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
+import { isEqual, remove as loRemove } from "lodash";
+import { IconExternalLink, IconCircleCheck, IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
-import { appConfig, filterColumnsDirView, globalEmitter, openFileBrowser, emptyTrack } from "../helpers";
+import { appConfig, globalEmitter, openFileBrowser, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
 
-const dzrsTracks = ref([{}]);
-const dzrsFiles = ref([{}]);
-const selectedDzrsFilePaths = ref([]);
-const activeDzrsFilePath = computed(() => selectedDzrsFilePaths.value.length >= 1 ? selectedDzrsFilePaths.value[selectedDzrsFilePaths.value.length - 1] : false);
-const showFilterMenu = ref(false);
-const currentWatchedPath = ref(appConfig.directoryViewPath);
-const tagsFetching = ref(false);
-const activeDzrsTrack = computed(() => {
-  if (activeDzrsFilePath.value) {
-    const track = dzrsTracks.value.find((track) => track.path === activeDzrsFilePath.value);
+// Track objects
+const dzrsTrackObjects = ref([{}]);
+const activeDzrsTrackObject = computed(() => {
+  let activeTrack = defaultDzrsTrackObject;
+  if (selectedFilePaths.value.length >= 1) {
+    const activeFilePath = selectedFilePaths.value[selectedFilePaths.value.length - 1];
+    const track = dzrsTrackObjects.value.find((file) => file.filePath === activeFilePath);
     if (track) {
-      return track;
-    };
-    return emptyTrack;
-  };
-  return emptyTrack;
+      activeTrack = track;
+    }
+  }
+  return activeTrack;
+});
+
+// Dynamic variable, updated using selectFiles(), this maps to every selected TRACK_OBJ.filePath in the local files main panel
+// used mostly for manipulating said files through invoking commands to the backend
+const selectedFilePaths = ref([]);
+
+// Used for displaying the user the currently open local files path, and as an argument for invoking commands
+const activeLocalFilesPath = ref(appConfig.directoryViewPath);
+
+// Visibility/interactivity toggles for various elements
+const showFilterMenu = ref(false);
+const tagsIsFetchingOrSaving = ref(false);
+const tagsFetchingOrSavingEnabled = computed(() => {
+  return activeDzrsTrackObject.value.fileExtension === "flac" ? true : false;
 });
 const tagsNeedSave = computed(() => {
-  const found = dzrsTracks.value.find((t) => !isEqual(t.tags, t.tagsToSave));
-  if (found) {
-    return true;
-  } else {
-    return false;
-  };
+  return dzrsTrackObjects.value.find((t) => !isEqual(t.tags, t.tagsToSave)) ? true : false;
 });
 
-async function loadFilesIntoView() {
-  const result = await invoke("watcher_get_files", { path: currentWatchedPath.value })
+// Obtain all track objects currently loaded in the backend
+// this operation needs to be manually called after invoking manipulating commands over the track objects in the backend
+// to ensure that they are always synchronized.
+async function getDzrsTrackObjects() {
+  const result = await invoke("tracks_get")
     .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watcher_get_files", msg: err }));
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjects", msg: err }));
   if (result) {
-    dzrsFiles.value = result.items;
-  };
+    result.forEach((newTr) => {
+      // Join tracks found in both frontend and backend
+      const i = dzrsTrackObjects.value.findIndex((tr) => tr.filePath === newTr.filePath);
+      if (i !== -1 && !isEqual(newTr, dzrsTrackObjects.value[i])) {
+        dzrsTrackObjects.value[i] = newTr;
+      } else if (i === -1) {
+        dzrsTrackObjects.value.push(newTr);
+      }
+      // Remove tracks in the frontend but NOT found in the backend
+      loRemove(dzrsTrackObjects.value, (tr) => !result.some((tr1) => tr1.filePath === tr.filePath));
+    });
+  }
 }
 
-async function openLocalFilesExplorer() {
-  await openFileBrowser(appConfig.directoryViewPath)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "openLocalFilesExplorer", msg: err }));
+// Obtain all track objects from a given directory and loads them in the backend, this operation clears all pre-exising objects and reassigns the new ones
+async function getDzrsTrackObjectsDir() {
+  const result = await invoke("tracks_get_dir", { dir: activeLocalFilesPath.value })
+    .then((res) => res)
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjectsDir", msg: err }));
+  if (result) {
+    dzrsTrackObjects.value = result;
+  }
 }
 
+// Called when setting a new local files directory from the main panel, the track objects have to be reassigned to match the files in the new directory
+// a call is also made to the backend to instruct the watcher to watch the new directory
 async function updateViewPath() {
   const path = await open({ defaultPath: appConfig.directoryViewPath, directory: true, multiple: false })
     .then((res) => res)
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
   if (path !== null) {
-    currentWatchedPath.value = path;
-    await loadFilesIntoView();
-    await getAllDzrsTracks();
-    await invoke("watch_directory", { path: path })
-      .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
-  };
-};
+    activeLocalFilesPath.value = path;
+    await getDzrsTrackObjectsDir();
+    await invoke("watch_directory", { path: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
+  }
+}
 
+// Keeps selectedFilePaths updated based on which files have been selected on the local files panel
+// this function supports selecting files using CTRL and SHIFT keys
 function selectFiles(event, file) {
   if (event.shiftKey) {
     let indexStart;
-    if (selectedDzrsFilePaths.value.length >= 1) {
-      const _filePath = selectedDzrsFilePaths.value[selectedDzrsFilePaths.value.length - 1];
-      const _i = dzrsFiles.value.findIndex(_file => _file.path === _filePath);
+    if (selectedFilePaths.value.length >= 1) {
+      const _filePath = selectedFilePaths.value[selectedFilePaths.value.length - 1];
+      const _i = dzrsTrackObjects.value.findIndex((_file) => _file.filePath === _filePath);
       indexStart = _i;
     } else {
       indexStart = 0;
-    };
-    const indexEnd = dzrsFiles.value.indexOf(file);
+    }
+    const indexEnd = dzrsTrackObjects.value.indexOf(file);
     if (indexStart < indexEnd) {
       for (let i = indexStart + 1; i <= indexEnd; i++) {
-        const _filePath = dzrsFiles.value[i].path;
-        if (selectedDzrsFilePaths.value.includes(_filePath)) {
-          const _i = selectedDzrsFilePaths.value.indexOf(_filePath);
-          selectedDzrsFilePaths.value.splice(_i, 1);
+        const _filePath = dzrsTrackObjects.value[i].filePath;
+        if (selectedFilePaths.value.includes(_filePath)) {
+          const _i = selectedFilePaths.value.indexOf(_filePath);
+          selectedFilePaths.value.splice(_i, 1);
         } else {
-          selectedDzrsFilePaths.value.push(_filePath);
-        };
-      };
+          selectedFilePaths.value.push(_filePath);
+        }
+      }
     } else {
       for (let i = indexStart - 1; i >= indexEnd; i--) {
-        const _filePath = dzrsFiles.value[i].path;
-        if (selectedDzrsFilePaths.value.includes(_filePath)) {
-          const _i = selectedDzrsFilePaths.value.indexOf(_filePath);
-          selectedDzrsFilePaths.value.splice(_i, 1);
+        const _filePath = dzrsTrackObjects.value[i].filePath;
+        if (selectedFilePaths.value.includes(_filePath)) {
+          const _i = selectedFilePaths.value.indexOf(_filePath);
+          selectedFilePaths.value.splice(_i, 1);
         } else {
-          selectedDzrsFilePaths.value.push(_filePath);
-        };
-      };
-    };
+          selectedFilePaths.value.push(_filePath);
+        }
+      }
+    }
   } else if (event.ctrlKey) {
-    if (selectedDzrsFilePaths.value.includes(file.path)) {
-      let i = selectedDzrsFilePaths.value.indexOf(file.path);
-      selectedDzrsFilePaths.value.splice(i, 1);
+    if (selectedFilePaths.value.includes(file.filePath)) {
+      let i = selectedFilePaths.value.indexOf(file.filePath);
+      selectedFilePaths.value.splice(i, 1);
     } else {
-      selectedDzrsFilePaths.value.push(file.path);
+      selectedFilePaths.value.push(file.filePath);
     }
   } else {
-    selectedDzrsFilePaths.value = [file.path];
-  };
-};
+    selectedFilePaths.value = [file.filePath];
+  }
+}
 
+// Updates the config file based on which columns of the local files panel are currently enabled
+// This means the selected columns keep a persistent state between program restarts
 async function saveFilterColumn(filterColumnDirView) {
-  await invoke("update_config", { key: filterColumnDirView.config, value: `${filterColumnDirView.enabled}` })
-    .then((_) => "")
+  await invoke("config_set", { key: filterColumnDirView.config, value: `${filterColumnDirView.enabled}` })
+    .then(() => "")
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
 
-async function getAllDzrsTracks() {
-  const flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
-  const flac_paths = flacs.map((f) => f.path);
-  const result = await invoke("get_all_dzrs_tracks", { paths: flac_paths, clearStored: true, getDeezerTags: false })
-    .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
-  dzrsTracks.value = result.items;
-  updateDzrsFilesStatus();
-};
-
-async function updateDzrsTracks(paths) {
-  const tracks = await invoke("update_dzrs_tracks", { paths: paths, getDeezerTags: false })
-    .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateDzrsTracks", msg: err }));
-  tracks.forEach((t) => {
-    const i = dzrsTracks.value.findIndex((_t) => _t.path === t.path);
-    if (i !== -1) {
-      dzrsTracks.value[i] = t;
-    };
-  });
-};
-
-async function getDzrsTracksFromSelection() {
-  let flacs;
-  tagsFetching.value = true;
-  if (selectedDzrsFilePaths.value.length === 0) {
-    flacs = dzrsFiles.value.filter((file) => file.extension === "flac");
+// Fetches tags from deezer for the selected flac files, then retrieves the new track objects from backend
+async function fetchDzrsTrackObjects() {
+  tagsIsFetchingOrSaving.value = true;
+  let flacs = [];
+  if (selectedFilePaths.value.length === 0) {
+    flacs = dzrsTrackObjects.value.filter((t) => t.fileExtension === "flac").map((f) => f.filePath);
   } else {
-    flacs = dzrsFiles.value.filter((file) => file.extension === "flac" && selectedDzrsFilePaths.value.includes(file.path));
-  };
-  const flac_paths = flacs.map((f) => f.path);
-  const result = await invoke("get_all_dzrs_tracks", { paths: flac_paths, clearStored: false, getDeezerTags: true })
-    .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTracksFromSelection", msg: err }));
-  dzrsTracks.value = result.items;
-  updateDzrsFilesStatus();
-  tagsFetching.value = false;
-};
+    flacs = dzrsTrackObjects.value.filter((t) => t.fileExtension === "flac" && selectedFilePaths.value.includes(t.filePath)).map((f) => f.filePath);
+  }
+  await invoke("tracks_fetch", { paths: flacs }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "fetchDzrsTrackObjects", msg: err.join(" ") }));
+  await getDzrsTrackObjects();
+  tagsIsFetchingOrSaving.value = false;
+}
 
-function updateDzrsFilesStatus() {
-  const pathsAndStatuses = dzrsTracks.value.map((track) => {
-    let status;
-    if (track.saved) {
-      status = "Finalized"
-    } else if (track.matched) {
-      status = "Matched"
-    } else if (track.fetched && track.candidates) {
-      status = "Successfull"
-    } else if (track.fetched && !track.candidates) {
-      status = "Unsuccessfull"
-    } else {
-      status = "NotFetched"
-    }
-    return [track.path, status]
-  });
-  pathsAndStatuses.forEach((v) => {
-    const i = dzrsFiles.value.findIndex((file) => file.path === v[0]);
-    if (i !== -1) {
-      dzrsFiles.value[i].tagStatus = v[1]
-    }
-  });
-};
-
-function showFileModifiedIcon(file) {
-  const track = dzrsTracks.value.find((t) => t.path === file.path);
-  if (track) {
-    if (!isEqual(track.tags, track.tagsToSave)) {
-      return true
-    } else {
-      return false
-    };
-  } else {
-    return false
-  };
-};
-
+// Saves edited files based on selection or all of them if no selection was made, then retrieves the new track objects from backend
 async function saveModifiedTracks() {
-  const modifiedTracks = dzrsTracks.value.filter((t) => !isEqual(t.tags, t.tagsToSave));
-  const modifiedTracksPaths = modifiedTracks.map((t) => t.path);
-  const confirmation = await confirm('Files will be saved with updated tags, are you sure?', { title: 'Save', type: 'warning' });
+  const confirmation = await confirm("Save modified files?", { title: "Save", type: "warning" });
   if (confirmation) {
-    if (selectedDzrsFilePaths.value.length >= 1) {
-      // Save only selected files
-      const savedPaths = [];
-      for (const track of modifiedTracks) {
-        if (selectedDzrsFilePaths.value.includes(track.path)) {
-          await invoke("save_tags_to_file", { path: track.path, tags: track.tagsToSave })
-          .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: `${err} Path ${track.path}` }));
-          savedPaths.push(track.path);
-        };
-      };
-      updateDzrsTracks(savedPaths);
+    let modifiedTracks = [];
+    if (selectedFilePaths.value.length >= 1) {
+      modifiedTracks = dzrsTrackObjects.value.filter((t) => !isEqual(t.tags, t.tagsToSave) && selectedFilePaths.value.includes(t.filePath));
     } else {
-      // Save all modified files instead
-      for (const track of modifiedTracks) {
-        await invoke("save_tags_to_file", { path: track.path, tags: track.tagsToSave })
-          .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: `${err} Path ${track.path}` }));
-      };
-      updateDzrsTracks(modifiedTracksPaths);
-    };
-  };
-};
+      modifiedTracks = dzrsTrackObjects.value.filter((t) => !isEqual(t.tags, t.tagsToSave));
+    }
+    if (modifiedTracks.length !== 0) {
+      modifiedTracks.forEach(async (t) => await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err })));
+      await getDzrsTrackObjects();
+    }
+  }
+}
 
-onMounted(async () => {
-  await loadFilesIntoView();
-  await getAllDzrsTracks();
-  appWindow.listen("watcher_fired", async (_) => {
-    await loadFilesIntoView();
-  });
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.table-filter-btn')) {
+async function fetchTagFromSource() {
+  tagsIsFetchingOrSaving.value = true;
+  tagsIsFetchingOrSaving.value = false;
+}
+
+onBeforeMount(async () => {
+  await getDzrsTrackObjectsDir();
+  // NEEDS TO BE HANDELED BETTER
+  // appWindow.listen("watcher_fired", async () => {
+  //   await loadDzrsTrackObjects();
+  // });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".table-filter-btn")) {
       showFilterMenu.value = false;
     }
   });
@@ -229,78 +189,84 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="container" style="gap: 5px;">
-    <div class="row" style="gap: 5px; flex-grow: 1;">
+  <div class="container" style="gap: 5px">
+    <div class="row" style="gap: 5px; flex-grow: 1">
       <div class="directory-panel">
-        <div class="row" style="gap: 10px; margin-bottom: 8px;">
-          <button style="padding: 2px 8px;" @click="updateViewPath">
-            <div class="row" style="color: var(--color-text);">
-              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px;"/>
+        <div class="row" style="gap: 10px; margin-bottom: 8px">
+          <button style="padding: 2px 8px" @click="updateViewPath">
+            <div class="row" style="color: var(--color-text)">
+              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px" />
               Open
             </div>
           </button>
-          <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px; margin-right: auto;" class="button">
-            {{ currentWatchedPath ? currentWatchedPath : "..." }}
+          <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px; margin-right: auto" class="button">
+            {{ activeLocalFilesPath ? activeLocalFilesPath : "..." }}
           </p>
-          <button style="padding: 2px 8px; margin-left: auto;" @click="openLocalFilesExplorer" v-show="appConfig.directoryViewPath">
-            <div class="row" style="color: var(--color-text);">
+          <button style="padding: 2px 8px; margin-left: auto" @click="async () => await openFileBrowser(appConfig.directoryViewPath)" v-show="appConfig.directoryViewPath">
+            <div class="row" style="color: var(--color-text)">
               Browse
-              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
             </div>
           </button>
-          <button style="padding: 2px 8px;" @click="getDzrsTracksFromSelection" :disabled="tagsFetching">
-            <div class="row" style="color: var(--color-text);" v-tooltip.bottom="{ content: 'Retrieve Deezer Tags' }">
+          <button style="padding: 2px 8px" @click="fetchDzrsTrackObjects" :disabled="tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
+            <div class="row" style="color: var(--color-text)" v-tooltip.bottom="{ content: 'Retrieve Deezer Tags' }">
               Fetch
-              <IconClipboardList v-if="!tagsFetching" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
-              <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px;"/>
+              <IconClipboardList v-if="!tagsIsFetchingOrSaving" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
+              <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px" />
             </div>
           </button>
-          <button style="padding: 2px 8px;" @click="saveModifiedTracks" :disabled="!tagsNeedSave">
-            <div class="row" style="color: var(--color-text);">
+          <button style="padding: 2px 8px" @click="saveModifiedTracks" :disabled="!tagsNeedSave || tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
+            <div class="row" style="color: var(--color-text)">
               Save
-              <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px;"/>
+              <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
             </div>
           </button>
         </div>
-        <div class="frame" @click.self="selectedDzrsFilePaths = []">
+        <div class="frame" @click.self="selectedFilePaths = []">
           <table>
             <thead class="table-header">
               <tr>
-                <th style="width: 20px; position: relative;">
-                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu"/>
+                <th style="width: 20px; position: relative">
+                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu" />
                   <div class="filter-menu" v-if="showFilterMenu" @click.stop>
                     <div class="filter-menu-arrow"></div>
                     <div v-for="column in filterColumnsDirView" :key="column.key">
                       <label>
-                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled"/>
+                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled" />
                         {{ column.label }}
                       </label>
                     </div>
                   </div>
                 </th>
                 <th><!-- Reserved for icon --></th>
-                <th v-for="column in filterColumnsDirView" :key="column.key" v-show="column.enabled">{{ column.label }}</th>
+                <th v-for="column in filterColumnsDirView" :key="column.key" v-show="column.enabled">
+                  {{ column.label }}
+                </th>
               </tr>
             </thead>
             <tbody>
-              <template v-for="file in dzrsFiles" :key="file.path">
-                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedDzrsFilePaths.includes(file.path) }">
+              <template v-for="file in dzrsTrackObjects" :key="file.filePath">
+                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath) }">
                   <td>
-                    <IconPointFilled v-if="showFileModifiedIcon(file)"/>
+                    <IconPointFilled v-if="!isEqual(file.tags, file.tagsToSave)" />
                   </td>
-                  <td class="img-container">
-                    <IconMusic v-if="['flac', 'mp3'].includes(file.extension)" color="#c9c9c9"/>
-                    <IconFile v-else color="#c9c9c9"/>
+                  <td class="img-container" @click="console.log(file.tagsStatus)">
+                    <IconMusic v-if="['flac', 'mp3'].includes(file.fileExtension)" color="#c9c9c9" />
+                    <IconFile v-else color="#c9c9c9" />
                   </td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic;">{{ file.filename }}</td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ (file.size / (1024 * 1024)).toFixed(1) }} MB</td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">{{ file.extension }}</td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic">
+                    {{ file.fileName }}
+                  </td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ (file.fileSize / (1024 * 1024)).toFixed(1) }} MB</td>
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'extension' && col.enabled)">
+                    {{ file.fileExtension }}
+                  </td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'tagStatus' && col.enabled)">
-                    <IconProgressCheck v-if="file.tagStatus === 'Finalized'" color="var(--color-success)" v-tooltip="'File Saved'"/>
-                    <IconProgressBolt v-else-if="file.tagStatus === 'Matched'" color="#578867" v-tooltip="'Good Match Applied'"/>
-                    <IconProgressHelp v-else-if="file.tagStatus === 'Successfull'" color="#998f40" v-tooltip="'Multiple Candidates Found'"/>
-                    <IconProgressAlert v-else-if="file.tagStatus === 'Unsuccessfull'" color="var(--color-error)" v-tooltip="'No Tags Found'"/>
-                    <IconProgress v-else color="#8c8c8c" v-tooltip="'Tags not Fetched'"/>
+                    <IconProgressCheck v-if="file.tagsStatus === 'finalized'" color="var(--color-success)" v-tooltip="'File Saved'" />
+                    <IconProgressBolt v-else-if="file.tagsStatus === 'matched'" color="#578867" v-tooltip="'Good Match Applied'" />
+                    <IconProgressHelp v-else-if="file.tagsStatus === 'successfull'" color="#998f40" v-tooltip="'Multiple Sources Found'" />
+                    <IconProgressAlert v-else-if="file.tagsStatus === 'unsuccessfull'" color="var(--color-error)" v-tooltip="'No Tags Found'" />
+                    <IconProgress v-else color="#8c8c8c" v-tooltip="'Tags not Fetched'" />
                   </td>
                 </tr>
               </template>
@@ -309,56 +275,76 @@ onMounted(async () => {
         </div>
       </div>
       <div class="source-panel frame">
-        <div class="sources-header" style="margin-bottom: 2px">
-          <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Sources</p>
-        </div>
-        <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto;">
-          <div v-for="(source, i) in activeDzrsTrack.tagCandidates" :key="i" class="row sources-item" style="border: 1px solid var(--color); padding: 5px;">
-            <a :href="source.link" target="_blank">
-              <img :src="source.cover" width="80" height="80">
-            </a>
-            <div class="column" style="flex-grow: 1; text-align: left;">
-              <div class="row">
-                <p><span>Title:</span> {{ source.title }}</p>
-                <IconCircleCheck size="25" class="icon icon-check" v-tooltip="'Apply'"/>
+        <div class="column" style="height: 100px; flex-grow: 1; justify-content: start">
+          <div class="row sources-header" style="margin-bottom: 2px; border-bottom: 1px solid var(--color-bg-2)">
+            <p style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px">Sources</p>
+            <IconRestore v-tooltip="'Restore Original Tags'" size="25" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" />
+          </div>
+          <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto; justify-content: start">
+            <div v-for="(source, i) in activeDzrsTrackObject.tagsSources" :key="i" class="row sources-item" style="border: 1px solid var(--color); padding: 5px">
+              <a :href="source.link" target="_blank" class="sources-item-cover">
+                <IconExternalLink size="40" color="var(--color-text)" class="icon-link" />
+                <div>
+                  <img :src="source.cover" width="80" height="80" />
+                </div>
+              </a>
+              <div class="column sources-item-text-col" style="flex-grow: 1; text-align: left">
+                <div class="row" style="max-width: 50px; justify-content: start">
+                  <p>
+                    <span class="sources-item-text-head">Title:</span>
+                    {{ source.title }}
+                  </p>
+                </div>
+                <div class="row" style="max-width: 50px; justify-content: start">
+                  <p>
+                    <span class="sources-item-text-head">Album:</span>
+                    {{ source.album }}
+                  </p>
+                </div>
+                <div class="row" style="max-width: 50px; justify-content: start">
+                  <p>
+                    <span class="sources-item-text-head">Artist:</span>
+                    {{ source.artist }}
+                  </p>
+                </div>
               </div>
-              <div class="row">
-                <p><span>Album:</span> {{ source.album }}</p>
-              </div>
-              <div class="row">
-                <p><span>Artist:</span> {{ source.artist }}</p>
-                <p style="flex-grow: 0; text-align: right;"><span>Length:</span> {{ `${Math.floor(source.duration / 60)}:${(source.duration % 60).toString().padStart(2, "0")}` }}</p>
+              <div class="column sources-item-text-col" style="align-items: flex-end">
+                <IconCircleCheck size="25" class="icon-check" v-tooltip="'Apply'" @click="fetchTagFromSource" />
+                <p style="opacity: 0%; flex-grow: 0">EMPTY</p>
+                <p style="flex-grow: 0; text-align: right">
+                  <span>Length:</span>
+                  {{ `${Math.floor(source.duration / 60)}:${(source.duration % 60).toString().padStart(2, "0")}` }}
+                </p>
               </div>
             </div>
           </div>
-        </div>
-        <div class="row sources-footer">
-            <IconRestore v-tooltip="'Restore Original Tags'" @click="" size="25" style="cursor: pointer;" class="icon"/>
         </div>
       </div>
     </div>
     <div class="tags-panel">
-      <div class="frame row" style="gap: 4px;">
+      <div class="frame row" style="gap: 4px">
         <div class="image-tag column">
           <div class="column">
-            <div v-if="activeDzrsTrack !== emptyTrack" v-for="picture in activeDzrsTrack.pictures" style="margin-bottom: 4px;">
-              <img :src="`data:image/png;base64, ${picture.b64}`" style="border-radius: 5%;">
-              <p>{{ picture.picType }}</p>
-              <p style="font-size: 0.8em;">{{ picture.description }}</p>
-              <p style="font-style: italic; font-size: 0.8em;">{{ picture.width }}x{{ picture.height }}</p>
+            <div v-if="activeDzrsTrackObject.fileExtension === 'flac'">
+              <div v-for="(picture, i) in activeDzrsTrackObject.tagsPictures" :key="i" style="margin-bottom: 4px">
+                <img :src="`data:image/png;base64, ${picture.b64}`" style="border-radius: 5%" />
+                <p>{{ picture.picType }}</p>
+                <p style="font-size: 0.8em">{{ picture.description }}</p>
+                <p style="font-style: italic; font-size: 0.8em">{{ picture.width }}x{{ picture.height }}</p>
+              </div>
             </div>
             <div v-else>
-              <img src="/assets/tag-image-placeholder.png">
-              <p style="font-style: italic;">Cover</p>
+              <img src="/assets/tag-image-placeholder.png" />
+              <p style="font-style: italic">Cover</p>
             </div>
           </div>
         </div>
-        <div class="column" style="flex-grow: 1;">
-          <div class="column" style="flex-basis: 400px; overflow-y: auto; justify-content: start;">
+        <div class="column" style="flex-grow: 1">
+          <div class="column" style="flex-basis: 400px; overflow-y: auto; justify-content: start">
             <table>
               <thead class="table-header">
                 <tr>
-                  <th style="width: 12%;">Tag</th>
+                  <th style="width: 12%">Tag</th>
                   <th>Current Value</th>
                   <th>Future Value</th>
                 </tr>
@@ -366,151 +352,383 @@ onMounted(async () => {
               <tbody>
                 <tr>
                   <th>Title</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.title }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.title !== activeDzrsTrack.tags.title}" v-model="activeDzrsTrack.tagsToSave.title"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.title" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.title !== activeDzrsTrackObject.tags.title }" v-model="activeDzrsTrackObject.tagsToSave.title"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Artist</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.artist }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.artist !== activeDzrsTrack.tags.artist}" v-model="activeDzrsTrack.tagsToSave.artist"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.artist" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.artist !== activeDzrsTrackObject.tags.artist }" v-model="activeDzrsTrackObject.tagsToSave.artist"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Album</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.album }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.album !== activeDzrsTrack.tags.album}" v-model="activeDzrsTrack.tagsToSave.album"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.album" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.album !== activeDzrsTrackObject.tags.album }" v-model="activeDzrsTrackObject.tagsToSave.album"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Album Artist</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.albumArtist }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.albumArtist !== activeDzrsTrack.tags.albumArtist}" v-model="activeDzrsTrack.tagsToSave.albumArtist"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.albumArtist" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.albumArtist !== activeDzrsTrackObject.tags.albumArtist }" v-model="activeDzrsTrackObject.tagsToSave.albumArtist"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Composer</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.composer }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.composer !== activeDzrsTrack.tags.composer}" v-model="activeDzrsTrack.tagsToSave.composer"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.composer" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.composer !== activeDzrsTrackObject.tags.composer }" v-model="activeDzrsTrackObject.tagsToSave.composer"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Performer</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.performer }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.performer !== activeDzrsTrack.tags.performer}" v-model="activeDzrsTrack.tagsToSave.performer"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.performer" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.performer !== activeDzrsTrackObject.tags.performer }" v-model="activeDzrsTrackObject.tagsToSave.performer"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Producer</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.producer }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.producer !== activeDzrsTrack.tags.producer}" v-model="activeDzrsTrack.tagsToSave.producer"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.producer" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.producer !== activeDzrsTrackObject.tags.producer }" v-model="activeDzrsTrackObject.tagsToSave.producer"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Genre</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.genre }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.genre !== activeDzrsTrack.tags.genre}" v-model="activeDzrsTrack.tagsToSave.genre"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.genre" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.genre !== activeDzrsTrackObject.tags.genre }" v-model="activeDzrsTrackObject.tagsToSave.genre"></textarea>
+                    </div>
+                  </td>
                 </tr>
-                <tr style="height: 300px;">
+                <tr style="height: 300px">
                   <th>Lyrics</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.lyrics }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.lyrics !== activeDzrsTrack.tags.lyrics}" v-model="activeDzrsTrack.tagsToSave.lyrics"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.lyrics" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.lyrics !== activeDzrsTrackObject.tags.lyrics }" v-model="activeDzrsTrackObject.tagsToSave.lyrics"></textarea>
+                    </div>
+                  </td>
                 </tr>
-                <tr style="height: 80px;">
+                <tr style="height: 80px">
                   <th>Copyright</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.copyright }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.copyright !== activeDzrsTrack.tags.copyright}" v-model="activeDzrsTrack.tagsToSave.copyright"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.copyright" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.copyright !== activeDzrsTrackObject.tags.copyright }" v-model="activeDzrsTrackObject.tagsToSave.copyright"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
-                  <th style="height: 80px;">Description</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.description }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.description !== activeDzrsTrack.tags.description}" v-model="activeDzrsTrack.tagsToSave.description"></textarea></div></td>
+                  <th style="height: 80px">Description</th>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.description" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.description !== activeDzrsTrackObject.tags.description }" v-model="activeDzrsTrackObject.tagsToSave.description"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Track Number</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.trackNumber }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.trackNumber !== activeDzrsTrack.tags.trackNumber}" v-model="activeDzrsTrack.tagsToSave.trackNumber"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.trackNumber" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.trackNumber !== activeDzrsTrackObject.tags.trackNumber }" v-model="activeDzrsTrackObject.tagsToSave.trackNumber"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Total Tracks</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.trackTotal }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.trackTotal !== activeDzrsTrack.tags.trackTotal}" v-model="activeDzrsTrack.tagsToSave.trackTotal"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.trackTotal" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.trackTotal !== activeDzrsTrackObject.tags.trackTotal }" v-model="activeDzrsTrackObject.tagsToSave.trackTotal"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Disk Number</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.diskNumber }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.diskNumber !== activeDzrsTrack.tags.diskNumber}" v-model="activeDzrsTrack.tagsToSave.diskNumber"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.diskNumber" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.diskNumber !== activeDzrsTrackObject.tags.diskNumber }" v-model="activeDzrsTrackObject.tagsToSave.diskNumber"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Total Disks</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.diskTotal }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.diskTotal !== activeDzrsTrack.tags.diskTotal}" v-model="activeDzrsTrack.tagsToSave.diskTotal"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.diskTotal" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.diskTotal !== activeDzrsTrackObject.tags.diskTotal }" v-model="activeDzrsTrackObject.tagsToSave.diskTotal"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Date</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.date }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.date !== activeDzrsTrack.tags.date}" v-model="activeDzrsTrack.tagsToSave.date"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.date" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.date !== activeDzrsTrackObject.tags.date }" v-model="activeDzrsTrackObject.tagsToSave.date"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Year</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.year }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.year !== activeDzrsTrack.tags.year}" v-model="activeDzrsTrack.tagsToSave.year"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.year" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.year !== activeDzrsTrackObject.tags.year }" v-model="activeDzrsTrackObject.tagsToSave.year"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Original Date</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.originalDate }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.originalDate !== activeDzrsTrack.tags.originalDate}" v-model="activeDzrsTrack.tagsToSave.originalDate"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.originalDate" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.originalDate !== activeDzrsTrackObject.tags.originalDate }" v-model="activeDzrsTrackObject.tagsToSave.originalDate"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Comment</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.comment }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.comment !== activeDzrsTrack.tags.comment}" v-model="activeDzrsTrack.tagsToSave.comment"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.comment" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.comment !== activeDzrsTrackObject.tags.comment }" v-model="activeDzrsTrackObject.tagsToSave.comment"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Label</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.label }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.label !== activeDzrsTrack.tags.label}" v-model="activeDzrsTrack.tagsToSave.label"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.label" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.label !== activeDzrsTrackObject.tags.label }" v-model="activeDzrsTrackObject.tagsToSave.label"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Barcode</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.barcode }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.barcode !== activeDzrsTrack.tags.barcode}" v-model="activeDzrsTrack.tagsToSave.barcode"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.barcode" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.barcode !== activeDzrsTrackObject.tags.barcode }" v-model="activeDzrsTrackObject.tagsToSave.barcode"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>ISRC</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.isrc }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.isrc !== activeDzrsTrack.tags.isrc}" v-model="activeDzrsTrack.tagsToSave.isrc"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.isrc" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.isrc !== activeDzrsTrackObject.tags.isrc }" v-model="activeDzrsTrackObject.tagsToSave.isrc"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>BPM</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.bpm }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.bpm !== activeDzrsTrack.tags.bpm}" v-model="activeDzrsTrack.tagsToSave.bpm"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.bpm" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.bpm !== activeDzrsTrackObject.tags.bpm }" v-model="activeDzrsTrackObject.tagsToSave.bpm"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>RG Track Gain</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainTrackGain }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainTrackGain !== activeDzrsTrack.tags.replaygainTrackGain}" v-model="activeDzrsTrack.tagsToSave.replaygainTrackGain"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.replaygainTrackGain" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.replaygainTrackGain !== activeDzrsTrackObject.tags.replaygainTrackGain }" v-model="activeDzrsTrackObject.tagsToSave.replaygainTrackGain"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>RG Track Peak</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainTrackPeak }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainTrackPeak !== activeDzrsTrack.tags.replaygainTrackPeak}" v-model="activeDzrsTrack.tagsToSave.replaygainTrackPeak"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.replaygainTrackPeak" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.replaygainTrackPeak !== activeDzrsTrackObject.tags.replaygainTrackPeak }" v-model="activeDzrsTrackObject.tagsToSave.replaygainTrackPeak"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>RG Album Gain</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainAlbumGain }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainAlbumGain !== activeDzrsTrack.tags.replaygainAlbumGain}" v-model="activeDzrsTrack.tagsToSave.replaygainAlbumGain"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.replaygainAlbumGain" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.replaygainAlbumGain !== activeDzrsTrackObject.tags.replaygainAlbumGain }" v-model="activeDzrsTrackObject.tagsToSave.replaygainAlbumGain"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>RG Album Peak</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.replaygainAlbumPeak }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.replaygainAlbumPeak !== activeDzrsTrack.tags.replaygainAlbumPeak}" v-model="activeDzrsTrack.tagsToSave.replaygainAlbumPeak"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.replaygainAlbumPeak" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.replaygainAlbumPeak !== activeDzrsTrackObject.tags.replaygainAlbumPeak }" v-model="activeDzrsTrackObject.tagsToSave.replaygainAlbumPeak"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <th>Encoder</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ activeDzrsTrack.tags.encoder }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': activeDzrsTrack.tagsToSave.encoder !== activeDzrsTrack.tags.encoder}" v-model="activeDzrsTrack.tagsToSave.encoder"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.encoder" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.encoder !== activeDzrsTrackObject.tags.encoder }" v-model="activeDzrsTrackObject.tagsToSave.encoder"></textarea>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
-                  <th style="border-top: 1px solid var(--color-bg-2);" colspan="3">Other Tags</th>
+                  <th style="border-top: 1px solid var(--color-bg-2)" colspan="3">Other Tags</th>
                 </tr>
-                <tr v-for="(extraTag, i) in activeDzrsTrack.tags.extraTags">
+                <tr v-for="(extraTag, i) in activeDzrsTrackObject.tags.extraTags" :key="i">
                   <th>{{ extraTag[0] }}</th>
-                  <td><div><textarea spellcheck="false" type="text" readonly>{{ extraTag[1] }}</textarea></div></td>
-                  <td><div><textarea spellcheck="false" type="text" :class="{'tag-yellow-text': extraTag[1] !== activeDzrsTrack.tagsToSave.extraTags[i][1]}" v-model="activeDzrsTrack.tagsToSave.extraTags[i][1]"></textarea></div></td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="extraTag[1]" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': extraTag[1] !== activeDzrsTrackObject.tagsToSave.extraTags[i][1] }" v-model="activeDzrsTrackObject.tagsToSave.extraTags[i][1]"></textarea>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -522,7 +740,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.directory-panel, .tags-panel, .source-panel {
+.directory-panel,
+.tags-panel,
+.source-panel {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -530,7 +750,6 @@ onMounted(async () => {
 
 .source-panel {
   flex-basis: 400px;
-  flex-grow: 0 !important;
 }
 
 .directory-panel .frame {
@@ -609,7 +828,9 @@ p {
   user-select: text;
 }
 
-.directory-panel tbody tr:hover, .tags-panel tbody tr:hover, .selected-file {
+.directory-panel tbody tr:hover,
+.tags-panel tbody tr:hover,
+.selected-file {
   background-color: var(--color-hover);
 }
 
@@ -653,7 +874,7 @@ p {
   border: unset;
   font-size: unset;
   font-family: inherit;
-  resize:none;
+  resize: none;
 }
 
 .tags-panel tbody textarea:focus {
@@ -665,7 +886,7 @@ p {
 }
 
 .tags-panel tbody textarea::-webkit-scrollbar-thumb {
-    border-radius: 2px;
+  border-radius: 2px;
 }
 
 .tags-panel table {
@@ -684,17 +905,6 @@ p {
   top: 0;
 }
 
-.sources-footer {
-  margin-top: auto;
-  justify-content: flex-end;
-  padding: 5px;
-  border-top: 1px solid var(--color-bg-2);
-  position: sticky;
-  bottom: 0px;
-  background-color: var(--color-bg-1);
-  transition: all 0.2s ease;
-}
-
 .sources-item {
   border-radius: 4px;
   transition: background-color 0.2s ease;
@@ -704,18 +914,83 @@ p {
   background-color: var(--color-bg-2);
 }
 
-.sources-item img {
+.sources-item .icon-check {
+  padding-left: 5px;
+  opacity: 0%;
+  transition: opacity 0.2s ease;
+}
+
+.sources-item:hover .icon-check {
+  opacity: 100%;
+  transition: opacity 0.1s ease;
+}
+
+.sources-item-cover {
+  position: relative;
+}
+
+.sources-item-cover img {
   display: block;
   margin-bottom: auto;
   margin-top: auto;
   border-radius: 4px;
   user-select: none;
+  opacity: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.sources-item-cover:hover img {
+  opacity: 50%;
+}
+
+.sources-item-cover .icon-link {
+  opacity: 0%;
+  transition: opacity 0.2s ease;
+}
+
+.sources-item-cover:hover .icon-link {
+  opacity: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.sources-item-cover .icon-link {
+  top: 25%;
+  right: 25%;
+  position: absolute;
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (max-width: 1300px) {
+  .sources-item-text-col {
+    font-size: 0.88em;
+  }
+
+  .sources-item p {
+    padding-left: 5px !important;
+  }
+}
+
+@media (max-width: 1150px) {
+  .sources-item-text-head {
+    display: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .sources-item-text-col:first-of-type {
+    display: none;
+  }
+  .sources-item-text-col:nth-of-type(2) {
+    flex-grow: 1;
+  }
 }
 
 .sources-item p {
-  /* max-width: ; */
   padding-left: 15px;
   flex-grow: 1;
+  margin-top: 0px;
+  margin-bottom: 0px;
   text-wrap: nowrap;
 }
 
@@ -729,7 +1004,8 @@ p {
   cursor: pointer;
 }
 
-.img-container, .img-container * {
+.img-container,
+.img-container * {
   width: 30px;
 }
 
@@ -748,8 +1024,8 @@ p {
   background-color: var(--color-hover);
 }
 
-.tag-yellow-text {
-  color: #998f40;
+.tag-accent-text {
+  color: #998140;
 }
 
 .expanded {
@@ -777,9 +1053,9 @@ p {
 }
 
 .filter-menu-arrow {
-  width: 0; 
-  height: 0; 
-  border-top: 0px solid transparent; 
+  width: 0;
+  height: 0;
+  border-top: 0px solid transparent;
   border-bottom: 15px solid var(--color-accent);
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
@@ -796,6 +1072,6 @@ p {
 }
 
 ::-webkit-scrollbar {
-    width: 8px;
+  width: 8px;
 }
 </style>

@@ -2,31 +2,27 @@
 import { ref } from "vue";
 import { IconCaretRightFilled } from "@tabler/icons-vue";
 
-const prop = defineProps(["body-as-column"])
+const prop = defineProps(["body-as-column"]);
 
 const header = ref(null);
 const body = ref(null);
 
 function toggleExpandGroup() {
-    body.value.classList.toggle("expanded");
-    header.value.children[0].classList.toggle("icon-expanded");
+  body.value.classList.toggle("expanded");
+  header.value.children[0].classList.toggle("icon-expanded");
 }
-
 </script>
 
 <template>
-    <div class="column setting-column">
-        <div class="row setting-btn" ref="header" @click="toggleExpandGroup">
-          <IconCaretRightFilled size="30" class="icon"/>
-          <slot name="head">
-          </slot>
-        </div>
-        <div :class="{ 'column': prop.bodyAsColumn }" class="setting-body" ref="body">
-            <slot name="body">
-
-            </slot>
-        </div>
+  <div class="column setting-column">
+    <div class="row setting-btn" ref="header" @click="toggleExpandGroup">
+      <IconCaretRightFilled size="30" class="icon" />
+      <slot name="head"> </slot>
     </div>
+    <div :class="{ column: prop.bodyAsColumn }" class="setting-body" ref="body">
+      <slot name="body"> </slot>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -57,11 +53,11 @@ function toggleExpandGroup() {
 }
 
 .icon {
-    transform: rotate(0deg);
-    transition: transform 0.2s ease-in-out;
+  transform: rotate(0deg);
+  transition: transform 0.2s ease-in-out;
 }
 
 .icon-expanded {
-    transform: rotate(90deg);
+  transform: rotate(90deg);
 }
 </style>

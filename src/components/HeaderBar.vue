@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 import { appWindow } from "@tauri-apps/api/window";
 import { IconLayoutList } from "@tabler/icons-vue";
 
-import { globalEmitter } from "../helpers";
+import { globalEmitter } from "../globals";
 
 const emit = defineEmits(["showNotifications"]);
 
@@ -13,16 +13,16 @@ const notificationDot = ref(null);
 
 function emitPageChange(page) {
   activeButton.value = page;
-  appWindow.emit('page-change', page);
+  appWindow.emit("page-change", page);
 }
 
 function emitShowNotifications() {
-    showNotifications.value = !showNotifications.value;
-    emit("showNotifications", showNotifications.value);
-};
+  showNotifications.value = !showNotifications.value;
+  emit("showNotifications", showNotifications.value);
+}
 
 onMounted(() => {
-  globalEmitter.on('notifications-state', (value) => {
+  globalEmitter.on("notifications-state", (value) => {
     if (value === true) {
       notificationDot.value.classList.remove("hidden");
       notificationDot.value.classList.add("shown");
@@ -32,42 +32,40 @@ onMounted(() => {
     }
   });
 });
-
 </script>
 
 <template>
   <div class="row header-bar">
-    <img src="../assets/logox256.png">
+    <img src="../assets/logox256.png" />
     <div class="row header-btns">
-        <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main'}">
-          <p>Tagging</p>
-        </div>
-        <div class="row header-btn" @click="emitPageChange('Download')" :class="{ active: activeButton === 'Download'}">
-          <p>Download</p>
-        </div>
-        <div class="row header-btn" @click="emitPageChange('Settings')" :class="{ active: activeButton === 'Settings'}">
-          <p>Settings</p>
-        </div>
-        <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About'}">
-          <p>About</p>
-        </div>
-        <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative; margin-left: 30px;" @click="emitShowNotifications">
-          <IconLayoutList class="icon"/>
-          <div class="notification-dot hidden" ref="notificationDot">
-          </div>
-        </div>
+      <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main' }">
+        <p>Tagging</p>
+      </div>
+      <div class="row header-btn" @click="emitPageChange('Download')" :class="{ active: activeButton === 'Download' }">
+        <p>Download</p>
+      </div>
+      <div class="row header-btn" @click="emitPageChange('Settings')" :class="{ active: activeButton === 'Settings' }">
+        <p>Settings</p>
+      </div>
+      <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About' }">
+        <p>About</p>
+      </div>
+      <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative; margin-left: 30px" @click="emitShowNotifications">
+        <IconLayoutList class="icon" />
+        <div class="notification-dot hidden" ref="notificationDot"></div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 h1 {
-    font-size: 1.2em;
-    font-style: italic;
-    margin-right: 10px;
-    margin-top: 2px;
-    margin-bottom: 2px;
-    user-select: none;
+  font-size: 1.2em;
+  font-style: italic;
+  margin-right: 10px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  user-select: none;
 }
 
 .row {
@@ -110,7 +108,8 @@ h1 {
   border-top: 1px solid var(--color-accent);
 }
 
-.header-btn:hover, .btn-hover {
+.header-btn:hover,
+.btn-hover {
   background-color: var(--color-hover);
   border-top: 1px solid var(--color-accent);
 }

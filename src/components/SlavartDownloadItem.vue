@@ -3,7 +3,7 @@ import { reactive } from "vue";
 import { IconDownload } from "@tabler/icons-vue";
 
 const prop = defineProps(["item-data", "columns"]);
-const emit = defineEmits(["downloadRequested"])
+const emit = defineEmits(["downloadRequested"]);
 
 const data = reactive({ ...prop.itemData });
 
@@ -14,32 +14,37 @@ function scaleImage() {
   setTimeout(() => {
     imgDarkenStyle.transform = "scale(1.0)";
   }, 100);
-};
+}
 
 function emitDownloadRequested() {
-  emit('downloadRequested', data);
-};
-
+  emit("downloadRequested", data);
+}
 </script>
 
 <template>
   <tr>
     <td><!-- Empty cell reserved for table filter --></td>
-    <td class="img-container" @click="scaleImage(); emitDownloadRequested()">
-      <IconDownload size="30" class="icon-download"/>
+    <td class="img-container" @click=" scaleImage(); emitDownloadRequested(); ">
+      <IconDownload size="30" class="icon-download" />
       <div class="img-darken" :style="imgDarkenStyle">
-        <img :src="prop.itemData.thumbnail">
+        <img :src="prop.itemData.thumbnail" width="50" />
       </div>
     </td>
     <td v-show="prop.columns.find((i) => i.key === 'title').enabled" class="text-pad">{{ prop.itemData.title }}</td>
-    <td v-show="prop.columns.find((i) => i.key === 'album').enabled" class="text-pad">{{ prop.itemData.albumTitle }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'album').enabled" class="text-pad">
+      {{ prop.itemData.albumTitle }}
+    </td>
     <td v-show="prop.columns.find((i) => i.key === 'artist').enabled" class="text-pad">{{ prop.itemData.artist }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'genre').enabled" class="text-pad">{{ prop.itemData.genre }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'duration').enabled">{{ Math.floor(prop.itemData.duration / 60) }}:{{ (prop.itemData.duration % 60).toString().padStart(2, "0") }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'date').enabled" class="text-pad">{{ prop.itemData.date }}</td>
-    <td v-show="prop.columns.find((i) => i.key === 'composer').enabled" class="text-pad">{{ prop.itemData.composer }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'composer').enabled" class="text-pad">
+      {{ prop.itemData.composer }}
+    </td>
     <td v-show="prop.columns.find((i) => i.key === 'isrc').enabled" class="text-pad">{{ prop.itemData.isrc }}</td>
-    <td v-show="prop.columns.find((i) => i.key === 'copyright').enabled" class="text-pad">{{ prop.itemData.copyright }}</td>
+    <td v-show="prop.columns.find((i) => i.key === 'copyright').enabled" class="text-pad">
+      {{ prop.itemData.copyright }}
+    </td>
     <td v-show="prop.columns.find((i) => i.key === 'bitDepth').enabled">{{ prop.itemData.bitDepth }}</td>
     <td v-show="prop.columns.find((i) => i.key === 'samplingRate').enabled">{{ prop.itemData.samplingRate }} kHz</td>
   </tr>
@@ -55,7 +60,9 @@ tr:hover {
 }
 
 .img-container {
-  width: 5%;
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
   margin-left: 20px;
   margin-right: 20px;
   margin-top: auto;
@@ -82,7 +89,7 @@ img {
 }
 
 td {
-  max-width: 100px;
+  max-width: 10px;
   overflow: scroll;
   white-space: nowrap;
   -ms-overflow-style: none;

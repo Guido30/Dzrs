@@ -212,10 +212,7 @@ impl DzrsConfiguration {
             filter_download_isrc: self.filter_download_isrc.parse().unwrap_or(false),
             filter_download_copyright: self.filter_download_copyright.parse().unwrap_or(false),
             filter_download_bitdepth: self.filter_download_bitdepth.parse().unwrap_or(false),
-            filter_download_samplingrate: self
-                .filter_download_samplingrate
-                .parse()
-                .unwrap_or(false),
+            filter_download_samplingrate: self.filter_download_samplingrate.parse().unwrap_or(false),
             filter_dirview_extension: self.filter_dirview_extension.parse().unwrap_or(false),
             tag_pad_track: self.tag_pad_track.parse().unwrap_or(false),
             tag_pad_track_total: self.tag_pad_track_total.parse().unwrap_or(false),

@@ -2,75 +2,220 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
-mod helpers;
 mod models;
+mod types;
 
-use config::DzrsConfiguration;
-use models::dzrs_files::DzrsFiles;
-use models::dzrs_tracks::{DzrsTrack, DzrsTracks, TrackTags};
-use models::slavart::SlavartDownloadItems;
-use models::slavart_api::Search;
+use crate::config::DzrsConfiguration;
+use crate::models::slavart_api::Search;
+use crate::types::files::{self, DzrsTrackObject, DzrsTrackObjectTagState, DzrsTrackObjectWrapper};
+use crate::types::slavart::SlavartDownloadItems;
+use crate::types::tags::{DeezerTagger, DzrsTrackObjectTags};
 
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use std::env;
+use std::env::consts::OS;
 use std::fs::File;
 use std::io::Write;
+use std::ops::Deref;
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, Window};
 
+pub fn app_data_dir() -> PathBuf {
+    let mut path = PathBuf::new();
+    match OS {
+        "linux" => {
+            if let Ok(xdg_data_home) = env::var("XDG_DATA_HOME") {
+                path.push(xdg_data_home);
+            } else if let Ok(home) = env::var("HOME") {
+                path.push(home);
+                path.push(".local/share");
+            }
+            path.push("Dzrs");
+        }
+        "macos" => {
+            if let Ok(home) = env::var("HOME") {
+                path.push(home);
+                path.push("Library/Application Support");
+                path.push("Dzrs");
+            }
+        }
+        "windows" => {
+            if let Ok(appdata) = env::var("APPDATA") {
+                path.push(appdata);
+                path.push("Dzrs");
+            }
+        }
+        _ => (),
+    }
+    path
+}
+
+// Commands for manipulating the inner DzrsTrackObjectWrapper from front-end
 #[tauri::command]
-async fn save_tags_to_file(
-    path: String,
-    tags: TrackTags,
-    dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
-) -> Result<(), String> {
-    let flacs = dzrs_tracks.lock().unwrap().clone();
-    flacs.save_tags(path, tags)?;
+async fn tracks_clear(tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), ()> {
+    let mut t = tracks.lock().unwrap();
+    t.clear();
     Ok(())
 }
 
 #[tauri::command]
-async fn get_empty_track() -> Result<DzrsTrack, ()> {
-    let track = DzrsTrack::default();
-    Ok(track)
+async fn tracks_replace(path: String, tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), String> {
+    let mut t = tracks.lock().unwrap();
+    t.replace_track(path)?;
+    Ok(())
 }
 
 #[tauri::command]
-async fn get_all_dzrs_tracks(
-    paths: Vec<String>,
-    clear_stored: bool,
-    get_deezer_tags: bool,
-    dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
+async fn tracks_insert(path: String, tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), String> {
+    let mut t = tracks.lock().unwrap();
+    t.insert_track(path)?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn tracks_remove(path: String, tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), String> {
+    let mut t = tracks.lock().unwrap();
+    t.remove_track(path)?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn tracks_get(tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<Vec<DzrsTrackObject>, ()> {
+    Ok(tracks.lock().unwrap().items.clone())
+}
+
+#[tauri::command]
+async fn tracks_get_dir(
+    dir: Option<String>,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
     configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<DzrsTracks, ()> {
-    let config = configuration.lock().unwrap().clone().parsed();
-    let mut flacs = dzrs_tracks.lock().unwrap().clone();
-    if clear_stored {
-        flacs.clear();
+) -> Result<Vec<DzrsTrackObject>, String> {
+    let conf = configuration.lock().unwrap().parsed();
+    let mut t = tracks.lock().unwrap();
+    let dir = match dir {
+        Some(p) => p,
+        None => conf.directory_view_path.clone(),
     };
-    flacs.update(paths, &config, get_deezer_tags).await;
-    *dzrs_tracks.lock().unwrap() = flacs.clone();
-    Ok(flacs)
+    match DzrsTrackObjectWrapper::new(dir) {
+        Ok(mut tr) => {
+            tr.iter_mut().for_each(|track| {
+                if track.file_extension == "flac" {
+                    let _ = track.load_tags(&conf);
+                }
+            });
+            *t = tr.clone();
+            Ok(tr.items)
+        }
+        Err(err) => Err(err),
+    }
 }
 
 #[tauri::command]
-async fn update_dzrs_tracks(
+async fn tracks_object() -> Result<DzrsTrackObject, ()> {
+    Ok(DzrsTrackObject::default())
+}
+
+// Commands for manipulating the inner DzrsConfiguration from front-end
+#[tauri::command]
+async fn config_get(configuration: State<'_, Mutex<DzrsConfiguration>>) -> Result<String, String> {
+    let conf = configuration.lock().unwrap().clone();
+    serde_json::to_string(&conf).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+async fn config_set(key: String, value: String, config: State<'_, Mutex<DzrsConfiguration>>) -> Result<(), String> {
+    let mut conf = config.lock().unwrap();
+    conf.update(key, value);
+    conf.save().map_err(|err| err.to_string())
+}
+
+// Fetch tags from deezer and apply them into the inner DzrsTrackObjects for each loaded path
+// Errors with a vector of each request that failed
+#[tauri::command]
+async fn tracks_fetch(
     paths: Vec<String>,
-    get_deezer_tags: bool,
-    dzrs_tracks: State<'_, Mutex<DzrsTracks>>,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<Vec<DzrsTrack>, ()> {
-    let config = configuration.lock().unwrap().clone().parsed();
-    let mut flacs = dzrs_tracks.lock().unwrap().clone();
-    flacs.update(paths.clone(), &config, get_deezer_tags).await;
-    *dzrs_tracks.lock().unwrap() = flacs.clone();
-    let mut tracks = Vec::new();
-    for path in paths {
-        if let Some(t) = flacs.get_track(path) {
-            tracks.push(t.to_owned());
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    tagger: State<'_, DeezerTagger>,
+    config: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), Vec<String>> {
+    let t = tracks.lock().unwrap().clone();
+    let conf = config.lock().unwrap().parsed();
+    let mut errors = Vec::new();
+    let mut trs = Vec::new();
+
+    // For each path fetch tags from deezer and create an owned updated version of DzrsTrackObject, stored into trs
+    // to later update the inner DzrsTrackObjectWrapper
+    // NOTE The mutex is immediately released and we work on a cloned version of DzrsTrackObjectWrapper, this allows us
+    // to call async methods, in this case fetch_by_query, and after the async calls have been made, the mutex gets locked again
+    // and the inner DzrsTrackObjectWrapper gets updated with the new values from deezer
+    for p in paths {
+        match t.get_track_obj(&p) {
+            Some(tr) => {
+                // Fetch tags from deezer using the track metadata
+                let mut tr = tr.to_owned();
+                let tr_meta = (tr.tags.title.deref(), tr.tags.album.deref(), tr.tags.artist.deref());
+                let payload = tagger.fetch_by_query(tr_meta.0, tr_meta.1, tr_meta.2).await;
+                // Update the DzrsTrackObject using the fetched tags
+                match payload {
+                    Ok(payload) => {
+                        tr.tags_deezer.apply_deezer(payload.0.clone(), &conf);
+                        tr.tags_to_save.apply_deezer(payload.0, &conf);
+                        tr.tags_status = DzrsTrackObjectTagState::Matched;
+                        tr.tags_sources = payload.1;
+                        trs.push(tr);
+                    }
+                    Err(err) => {
+                        tr.tags_status = DzrsTrackObjectTagState::Unsuccessfull;
+                        trs.push(tr);
+                        errors.push(err);
+                    }
+                };
+            }
+            _ => (),
         };
     }
-    Ok(tracks)
+
+    // Swap inner DzrsTrackObjects with updated ones
+    let mut t = tracks.lock().unwrap();
+    trs.into_iter()
+        .for_each(|tr| t.replace_track_obj(tr).map_err(|err| errors.push(err)).unwrap());
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+// Saves given tags into a file and updates the inner DzrsTrackObject to match the saved file
+#[tauri::command]
+async fn save_tags(
+    path: String,
+    tags: DzrsTrackObjectTags,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    config: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), String> {
+    let conf = config.lock().unwrap().parsed();
+    // Save tags into the flac
+    files::save_tags(&path, &tags)?;
+    // Update the loaded track to match the saved file
+    let mut track_ = DzrsTrackObject::new(&path)?;
+    track_.load_tags(&conf)?;
+    let mut t = tracks.lock().unwrap();
+    let tr = match t.get_track_obj_mut(&path) {
+        Some(tr) => tr,
+        None => return Err(format!("Cannot find inner DzrsTrackObject for {}", path)),
+    };
+    tr.tags = track_.tags;
+    tr.tags_pictures = track_.tags_pictures;
+    tr.tags_to_save = track_.tags_to_save;
+    tr.tags_status = DzrsTrackObjectTagState::Finalized;
+    // println!("{:?}\n{:?}\n{:?}", tr.file_path, tr.tags, tr.tags_to_save);
+    // TODO, THE FRONTEND IS RECEIVING THE NON UPDATED VERSION OF THE FILE
+    // WHICH MEANS THE CHANGES MIGHT NOT BE PERSISTED IN THE State<'_, Mutex<DzrsTrackObjectWrapper>>
+    Ok(())
 }
 
 #[tauri::command]
@@ -137,28 +282,6 @@ async fn download_track(
 }
 
 #[tauri::command]
-async fn get_config_values(configuration: State<'_, Mutex<DzrsConfiguration>>) -> Result<String, String> {
-    let conf = configuration.lock().unwrap().clone();
-    match serde_json::to_string(&conf) {
-        Ok(res) => Ok(res),
-        Err(err) => Err(err.to_string()),
-    }
-}
-
-#[tauri::command]
-async fn update_config(
-    key: String,
-    value: String,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<(), String> {
-    configuration.lock().unwrap().update(key, value);
-    match configuration.lock().unwrap().save() {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.to_string()),
-    }
-}
-
-#[tauri::command]
 async fn show_window(window: Window) -> Result<(), String> {
     match window.show() {
         Ok(()) => Ok(()),
@@ -168,7 +291,14 @@ async fn show_window(window: Window) -> Result<(), String> {
 
 #[tauri::command]
 async fn open_explorer(path: String) -> Result<(), String> {
-    match helpers::open_explorer(path) {
+    let path: PathBuf = path.into();
+    let program: String = match OS {
+        "linux" => "xdg-open".into(),
+        "macos" => "open".into(),
+        "windows" => "explorer".into(),
+        _ => "".into(),
+    };
+    match Command::new(program).arg(path).spawn() {
         Ok(_) => Ok(()),
         Err(err) => Err(err.to_string()),
     }
@@ -196,56 +326,48 @@ async fn watch_directory(
     Ok(())
 }
 
-#[tauri::command]
-async fn watcher_get_files(
-    path: Option<String>,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<DzrsFiles, ()> {
-    let path = match path {
-        Some(p) => p,
-        None => configuration.lock().unwrap().directory_view_path.clone(),
-    };
-    let files = DzrsFiles::from(path);
-    Ok(files)
-}
-
 fn main() {
-    let app_data_path = helpers::app_data_dir();
+    let app_data_path = app_data_dir();
     let config_path = app_data_path.join("config.json");
     if !config_path.exists() {
         let _ = std::fs::create_dir_all(config_path.parent().unwrap()); //safe unwrap
         let _ = std::fs::write(config_path.clone(), b"");
     }
-    let configuration = DzrsConfiguration::from_file(config_path);
-
-    let dzrs_tracks: DzrsTracks = DzrsTracks::default();
+    let config: Mutex<DzrsConfiguration> = Mutex::new(DzrsConfiguration::from_file(config_path));
+    let tracks_obj: Mutex<DzrsTrackObjectWrapper> = Mutex::new(DzrsTrackObjectWrapper::default());
+    let tagger: DeezerTagger = DeezerTagger::new();
     let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
         .setup(|app| {
-            #[cfg(debug_assertions)] // only include this code on debug builds
+            #[cfg(debug_assertions)] // Open Devtools in debug builds
             {
                 let window = app.get_window("main").unwrap();
                 window.open_devtools();
             }
             Ok(())
         })
-        .manage(Mutex::new(configuration))
-        .manage(Mutex::new(dzrs_tracks))
+        .manage(config)
+        .manage(tracks_obj)
+        .manage(tagger)
         .manage(watcher.clone())
         .invoke_handler(tauri::generate_handler![
+            tracks_clear,
+            tracks_replace,
+            tracks_insert,
+            tracks_remove,
+            tracks_get,
+            tracks_get_dir,
+            tracks_object,
+            config_get,
+            config_set,
+            tracks_fetch,
+            save_tags,
             show_window,
             watch_directory,
-            watcher_get_files,
-            get_config_values,
-            update_config,
             open_explorer,
             get_slavart_tracks,
             download_track,
-            get_all_dzrs_tracks,
-            update_dzrs_tracks,
-            get_empty_track,
-            save_tags_to_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running dzrs");

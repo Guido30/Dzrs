@@ -1,11 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { invoke } from "@tauri-apps/api/tauri"
+import { invoke } from "@tauri-apps/api/tauri";
 import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconLoader2 } from "@tabler/icons-vue";
 import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
 import DownloadInfoItem from "../components/DownloadInfoItem.vue";
 
-import { appConfig, parseFileName, openFileBrowser, filterColumnsDownload, globalEmitter } from "../helpers";
+import { appConfig, globalEmitter, filterColumnsDownload, parseFileName, openFileBrowser } from "../globals";
 
 const slavartItems = ref([]);
 const infoItems = ref([]);
@@ -20,17 +20,16 @@ const infoItemsIds = computed({
     const toRemoveIndex = infoItems.value.findIndex((item) => item.id === val);
     if (toRemoveIndex !== -1) {
       infoItems.value.splice(toRemoveIndex, 1);
-    };
-  }
+    }
+  },
 });
 
 async function searchTracks() {
   if (inputElement.value.value.length === 0) return;
-
   slavartItems.value = [];
   isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
-    .then((result) => slavartItems.value = result.items)
+    .then((result) => (slavartItems.value = result.items))
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
   isSearchPending.value = false;
 }
@@ -40,32 +39,26 @@ async function downloadTrack(item) {
     const i = infoItems.value.push(item) - 1;
     if (i === 0) {
       isDownloadExpanded.value = true;
-    };
+    }
     const fileName = parseFileName(item, appConfig.fileTemplate);
-    const downloadStatus = await invoke("download_track", { id: item.id, filename: fileName })
-      .then((_) => infoItems.value[i].status = true)
+    await invoke("download_track", { id: item.id, filename: fileName })
+      .then(() => (infoItems.value[i].status = true))
       .catch((err) => {
         infoItems.value[i].status = false;
-        infoItems.value[i].statusMsg = err
+        infoItems.value[i].statusMsg = err;
       });
   } else {
     globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${item.title} - ${item.albumTitle} is already in the queue` });
-  };
-};
-
-function removeInfoItem(id) {
-  infoItemsIds.value = id;
+  }
 }
 
 async function saveFilterColumn(filterColumnDownload) {
-  await invoke("update_config", { key: filterColumnDownload.config, value: `${filterColumnDownload.enabled}` })
-    .then((_) => "")
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
+  await invoke("config_set", { key: filterColumnDownload.config, value: `${filterColumnDownload.enabled}` }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
 
 onMounted(() => {
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.table-filter-btn')) {
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".table-filter-btn")) {
       showFilterMenu.value = false;
     }
   });
@@ -73,58 +66,60 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw;">
-    <div class="column" style="flex-grow: 1; gap: 15px;">
-      <div class="row" style="flex-basis: 50px;">
-        <input placeholder="Song name..." spellcheck="false" @keypress.enter="searchTracks" ref="inputElement"/>
-        <button style="margin-left: 10px;" @click="searchTracks">
-            <IconSearch size="20" color="var(--color-text)" class="icon"/>
+  <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw">
+    <div class="column" style="flex-grow: 1; gap: 15px">
+      <div class="row" style="flex-basis: 50px">
+        <input placeholder="Song name..." spellcheck="false" @keypress.enter="searchTracks" ref="inputElement" />
+        <button style="margin-left: 10px" @click="searchTracks">
+          <IconSearch size="20" color="var(--color-text)" class="icon" />
         </button>
-        <button style="margin-left: 10px;" @click="isDownloadExpanded = !isDownloadExpanded">
-          <IconArrowBarLeft size="20" color="var(--color-text)" class="icon" :class="{ 'download-expand-btn-expanded': isDownloadExpanded }"/>
+        <button style="margin-left: 10px" @click="isDownloadExpanded = !isDownloadExpanded">
+          <IconArrowBarLeft size="20" color="var(--color-text)" class="icon" :class="{ 'download-expand-btn-expanded': isDownloadExpanded }" />
         </button>
       </div>
-      <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px;">
+      <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px">
         <div class="frame" style="flex-grow: 1">
           <table>
             <thead class="table-header">
               <tr>
-                <th style="width: 20px; position: relative;">
-                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu"/>
+                <th style="width: 0%; position: relative">
+                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu" />
                   <div class="filter-menu" v-if="showFilterMenu" @click.stop>
                     <div class="filter-menu-arrow"></div>
                     <div v-for="column in filterColumnsDownload" :key="column.key">
                       <label>
-                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled"/>
+                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled" />
                         {{ column.label }}
                       </label>
                     </div>
                   </div>
                 </th>
-                <th><!-- Reserved for image --></th>
-                <th v-for="column in filterColumnsDownload" :key="column.key" v-show="column.enabled">{{ column.label }}</th>
+                <th style="width: 0%"><!-- Reserved for image --></th>
+                <th v-for="column in filterColumnsDownload" :key="column.key" v-show="column.enabled" :style="{ width: column.width + '%' }">
+                  {{ column.label }}
+                </th>
               </tr>
             </thead>
             <tbody>
               <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumnsDownload" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
             </tbody>
           </table>
-          <IconLoader2 size="100" class="icon-loading" style="height: 90%;" v-show="isSearchPending"/>
+          <IconLoader2 size="100" class="icon-loading" style="height: 90%" v-show="isSearchPending" />
         </div>
       </div>
     </div>
-    <div class="frame info-items" :class="{ 'expanded': isDownloadExpanded }">
-        <div class="table-header">
-          <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2);">Downloads</p>
-        </div>
-        <div>
-          <DownloadInfoItem @removeRequested="removeInfoItem" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
-        </div>
-        <div class="row downloads-btns">
-            <IconFolder v-tooltip="'Open Downloads'" @click="openFileBrowser(appConfig.downloadPath)" size="30" style="cursor: pointer;" class="icon"/>
-            <IconTrash v-tooltip="'Clear Queue'" @click="infoItems = []" size="30" style="cursor: pointer;" class="icon"/>
-        </div>
+    <div class="frame info-items" :class="{ expanded: isDownloadExpanded }">
+      <div class="table-header">
+        <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2)">Downloads</p>
       </div>
+      <div>
+        <DownloadInfoItem @removeRequested="(id) => (infoItemsIds = id)" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
+      </div>
+      <div class="row downloads-btns">
+        <IconFolder v-tooltip="'Open Downloads'" @click="openFileBrowser(appConfig.downloadPath)" size="30" style="cursor: pointer" class="icon" />
+        <IconTrash v-tooltip="'Clear Queue'" @click="infoItems = []" size="30" style="cursor: pointer" class="icon" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -242,9 +237,9 @@ tbody {
 }
 
 .filter-menu-arrow {
-  width: 0; 
-  height: 0; 
-  border-top: 0px solid transparent; 
+  width: 0;
+  height: 0;
+  border-top: 0px solid transparent;
   border-bottom: 15px solid var(--color-accent);
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
@@ -258,5 +253,9 @@ tbody {
   font-size: 1em;
   font-weight: 400;
   user-select: none;
+}
+
+.info-items::-webkit-scrollbar {
+  width: 8px;
 }
 </style>

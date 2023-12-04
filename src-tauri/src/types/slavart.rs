@@ -1,10 +1,10 @@
+use crate::models::slavart_api::Search;
+
 use chrono::prelude::DateTime;
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use std::time::{Duration, UNIX_EPOCH};
-
-use crate::models::slavart_api::Search;
-use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -31,20 +31,6 @@ pub struct SlavartDownloadItem {
     pub date: String,
 }
 
-impl Deref for SlavartDownloadItems {
-    type Target = Vec<SlavartDownloadItem>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.items
-    }
-}
-
-impl DerefMut for SlavartDownloadItems {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.items
-    }
-}
-
 impl From<Search> for SlavartDownloadItems {
     fn from(value: Search) -> Self {
         let items: Vec<SlavartDownloadItem> = value
@@ -56,11 +42,10 @@ impl From<Search> for SlavartDownloadItems {
                     Some(ver) => item.title + " (" + ver.as_str() + ")",
                     None => item.title,
                 };
-                let album_date = DateTime::<Utc>::from(
-                    UNIX_EPOCH + Duration::from_secs(item.album.released_at.abs() as u64),
-                )
-                .format("%Y-%m-%d")
-                .to_string();
+                let album_date =
+                    DateTime::<Utc>::from(UNIX_EPOCH + Duration::from_secs(item.album.released_at.abs() as u64))
+                        .format("%Y-%m-%d")
+                        .to_string();
                 SlavartDownloadItem {
                     thumbnail: item.album.image.thumbnail.unwrap_or_default(),
                     large: item.album.image.large,
@@ -80,5 +65,19 @@ impl From<Search> for SlavartDownloadItems {
             })
             .collect();
         Self { items }
+    }
+}
+
+impl Deref for SlavartDownloadItems {
+    type Target = Vec<SlavartDownloadItem>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.items
+    }
+}
+
+impl DerefMut for SlavartDownloadItems {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.items
     }
 }
