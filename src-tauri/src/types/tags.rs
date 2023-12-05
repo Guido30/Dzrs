@@ -302,6 +302,7 @@ impl DzrsTrackObjectTags {
         t.composer = composers.join(sep);
         t.performer = performers.join(sep);
         t.producer = producers.join(sep);
+        t.label = labels.join(sep);
         t.extra_tags = extra_tags;
         t
     }

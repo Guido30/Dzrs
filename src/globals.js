@@ -11,22 +11,6 @@ export const appConfig = JSON.parse(await invoke("config_get").then((res) => res
   }
   return value;
 });
-export function parseFileName(fileData, template) {
-  const fileName = template
-    .replaceAll("%title%", fileData.title)
-    .replaceAll("%album%", fileData.albumTitle)
-    .replaceAll("%artist%", fileData.artist)
-    .replaceAll("%genre%", fileData.genre)
-    .replaceAll("%duration%", `${Math.floor(fileData.duration / 60)}.${(fileData.duration % 60).toString().padStart(2, "0")}`)
-    .replaceAll("%date%", fileData.date)
-    .replaceAll("%composer%", fileData.composer)
-    .replaceAll("%isrc%", fileData.isrc)
-    .replaceAll("%copyright%", fileData.copyright)
-    .replaceAll("%bitDepth%", fileData.bitDepth)
-    .replaceAll("%samplingRate%", fileData.samplingRate)
-    .replaceAll(/[<>:"\/\\|?*]/g, " ");
-  return fileName;
-}
 
 export const filterColumnsDownload = ref([
   { key: "title", label: "Title", config: "", readonly: true, enabled: true, width: 20 },

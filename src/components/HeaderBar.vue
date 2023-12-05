@@ -37,6 +37,9 @@ onMounted(() => {
 <template>
   <div class="row header-bar">
     <img src="../assets/logox256.png" />
+    <slot>
+      <div style="flex-grow: 1"><!-- Fallback spacer --></div>
+    </slot>
     <div class="row header-btns">
       <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main' }">
         <p>Tagging</p>
@@ -50,7 +53,7 @@ onMounted(() => {
       <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About' }">
         <p>About</p>
       </div>
-      <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative; margin-left: 30px" @click="emitShowNotifications">
+      <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative" @click="emitShowNotifications">
         <IconLayoutList class="icon" />
         <div class="notification-dot hidden" ref="notificationDot"></div>
       </div>
@@ -81,7 +84,6 @@ h1 {
   padding: 8px;
   padding-left: 20px;
   padding-right: 20px;
-  justify-content: space-between;
   z-index: 10;
 }
 

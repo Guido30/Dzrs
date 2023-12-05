@@ -1,68 +1,73 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, reactive, computed } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
-import { IconSearch, IconFolder, IconTrash, IconDotsVertical, IconArrowBarLeft, IconLoader2 } from "@tabler/icons-vue";
-import SlavartDownloadItem from "../components/SlavartDownloadItem.vue";
-import DownloadInfoItem from "../components/DownloadInfoItem.vue";
+import { IconSearch, IconFolder, IconTrash, IconArrowBarLeft, IconLoader2, IconDownload, IconAlertCircle, IconCircleCheck } from "@tabler/icons-vue";
+import TableFilter from "../components/TableFilter.vue";
 
-import { appConfig, globalEmitter, filterColumnsDownload, parseFileName } from "../globals";
+import { appConfig, globalEmitter, filterColumnsDownload } from "../globals";
 
-const slavartItems = ref([]);
-const infoItems = ref([]);
+const slavartTracks = ref([]);
+const queuedTracks = ref([]);
 const inputElement = ref(null);
+
+// Visibility toggles for various elements
 const isDownloadExpanded = ref(false);
-const showFilterMenu = ref(false);
 const isSearchPending = ref(false);
 
-const infoItemsIds = computed({
-  get: () => infoItems.value.map((item) => item.id),
-  set: (val) => {
-    const toRemoveIndex = infoItems.value.findIndex((item) => item.id === val);
-    if (toRemoveIndex !== -1) {
-      infoItems.value.splice(toRemoveIndex, 1);
-    }
-  },
-});
+// Style variable for animating the track image when cliking on it
+// TODO ITS CURRENTLY GLOBAL FOR EVERY IMG TAG
+const imgDarkenStyle = reactive({ transform: "scale(1.0)" });
+
+function parseFileName(fileData, template) {
+  const fileName = template
+    .replaceAll("%title%", fileData.title)
+    .replaceAll("%album%", fileData.albumTitle)
+    .replaceAll("%artist%", fileData.artist)
+    .replaceAll("%genre%", fileData.genre)
+    .replaceAll("%duration%", `${Math.floor(fileData.duration / 60)}.${(fileData.duration % 60).toString().padStart(2, "0")}`)
+    .replaceAll("%date%", fileData.date)
+    .replaceAll("%composer%", fileData.composer)
+    .replaceAll("%isrc%", fileData.isrc)
+    .replaceAll("%copyright%", fileData.copyright)
+    .replaceAll("%bitDepth%", fileData.bitDepth)
+    .replaceAll("%samplingRate%", fileData.samplingRate)
+    .replaceAll(/[<>:"\/\\|?*]/g, " ");
+  return fileName;
+}
 
 async function searchTracks() {
   if (inputElement.value.value.length === 0) return;
-  slavartItems.value = [];
+  slavartTracks.value = [];
   isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
-    .then((result) => (slavartItems.value = result.items))
+    .then((result) => (slavartTracks.value = result.items))
     .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
   isSearchPending.value = false;
 }
 
-async function downloadTrack(item) {
-  if (!infoItemsIds.value.includes(item.id)) {
-    const i = infoItems.value.push(item) - 1;
+async function downloadTrack(tr) {
+  // Animate the track image
+  imgDarkenStyle.transform = "scale(1.1)";
+  setTimeout(() => {
+    imgDarkenStyle.transform = "scale(1.0)";
+  }, 100);
+  // Download the track
+  if (!queuedTracks.value.find((tr1) => tr1.id === tr.id)) {
+    const i = queuedTracks.value.push(tr) - 1;
     if (i === 0) {
       isDownloadExpanded.value = true;
     }
-    const fileName = parseFileName(item, appConfig.fileTemplate);
-    await invoke("download_track", { id: item.id, filename: fileName })
-      .then(() => (infoItems.value[i].status = true))
+    const fileName = parseFileName(tr, appConfig.fileTemplate);
+    await invoke("download_track", { id: tr.id, filename: fileName })
+      .then(() => (queuedTracks.value[i].status = true))
       .catch((err) => {
-        infoItems.value[i].status = false;
-        infoItems.value[i].statusMsg = err;
+        queuedTracks.value[i].status = false;
+        queuedTracks.value[i].statusMsg = err;
       });
   } else {
-    globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${item.title} - ${item.albumTitle} is already in the queue` });
+    globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${tr.title} - ${tr.albumTitle} is already in the queue` });
   }
 }
-
-async function saveFilterColumn(filterColumnDownload) {
-  await invoke("config_set", { key: filterColumnDownload.config, value: `${filterColumnDownload.enabled}` }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
-}
-
-onMounted(() => {
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest(".table-filter-btn")) {
-      showFilterMenu.value = false;
-    }
-  });
-});
 </script>
 
 <template>
@@ -78,21 +83,12 @@ onMounted(() => {
         </button>
       </div>
       <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px">
-        <div class="frame" style="flex-grow: 1">
+        <div class="frame slavart-tracks-container" style="flex-grow: 1">
           <table>
             <thead class="table-header">
               <tr>
                 <th style="width: 0%; position: relative">
-                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu" />
-                  <div class="filter-menu" v-if="showFilterMenu" @click.stop>
-                    <div class="filter-menu-arrow"></div>
-                    <div v-for="column in filterColumnsDownload" :key="column.key">
-                      <label>
-                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled" />
-                        {{ column.label }}
-                      </label>
-                    </div>
-                  </div>
+                  <TableFilter :columns="filterColumnsDownload" />
                 </th>
                 <th style="width: 0%"><!-- Reserved for image --></th>
                 <th v-for="column in filterColumnsDownload" :key="column.key" v-show="column.enabled" :style="{ width: column.width + '%' }">
@@ -101,23 +97,56 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody v-show="!isSearchPending">
-              <SlavartDownloadItem @downloadRequested="downloadTrack" :item-data="item" :columns="filterColumnsDownload" v-for="item in slavartItems" :key="item.id"></SlavartDownloadItem>
+              <tr v-for="slavTrack in slavartTracks" :key="slavTrack.id" class="table-row">
+                <td><!-- Empty cell reserved for table filter --></td>
+                <td class="img-container" @click="downloadTrack(slavTrack)">
+                  <IconDownload size="30" class="icon-download" />
+                  <div class="img-darken" :style="imgDarkenStyle">
+                    <img :src="slavTrack.thumbnail" width="50" />
+                  </div>
+                </td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'title').enabled" class="text-pad">{{ slavTrack.title }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'album').enabled" class="text-pad">{{ slavTrack.albumTitle }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'artist').enabled" class="text-pad">{{ slavTrack.artist }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'genre').enabled" class="text-pad">{{ slavTrack.genre }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'duration').enabled">{{ Math.floor(slavTrack.duration / 60) }}:{{ (slavTrack.duration % 60).toString().padStart(2, "0") }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'date').enabled" class="text-pad">{{ slavTrack.date }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'composer').enabled" class="text-pad">{{ slavTrack.composer }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'isrc').enabled" class="text-pad">{{ slavTrack.isrc }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'copyright').enabled" class="text-pad">{{ slavTrack.copyright }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'bitDepth').enabled">{{ slavTrack.bitDepth }}</td>
+                <td v-show="filterColumnsDownload.find((i) => i.key === 'samplingRate').enabled">{{ slavTrack.samplingRate }} kHz</td>
+              </tr>
             </tbody>
           </table>
           <IconLoader2 size="100" class="icon-loading" style="height: 90%" v-show="isSearchPending" />
         </div>
       </div>
     </div>
-    <div class="frame info-items" :class="{ expanded: isDownloadExpanded }">
+    <div class="frame queued-tracks-container" :class="{ expanded: isDownloadExpanded }">
       <div class="table-header">
         <p style="width: 100%; margin-top: 5px; margin-bottom: 0px; padding-bottom: 5px; border-bottom: 1px solid var(--color-bg-2)">Downloads</p>
       </div>
       <div>
-        <DownloadInfoItem @removeRequested="(id) => (infoItemsIds = id)" :item-data="item" v-for="item in infoItems" :key="item.id"></DownloadInfoItem>
+        <div v-for="(queuedTrack, i) in queuedTracks" :key="queuedTrack.id" class="queued-track">
+          <img :src="queuedTrack.large" />
+          <p>{{ queuedTrack.title }}</p>
+          <p>{{ queuedTrack.albumTitle }}</p>
+          <div class="row">
+            <p style="flex-grow: 1">{{ queuedTrack.artist }}</p>
+            <IconTrash class="icon icon-trash" style="cursor: pointer; margin-left: 5px" @click="queuedTracks.splice(i, 1)" />
+            <IconLoader2 class="icon icon-loading" v-if="!queuedTrack.hasOwnProperty('status')" />
+            <IconCircleCheck class="icon" color="var(--color-success)" v-else-if="queuedTrack.status" />
+            <IconAlertCircle @click="queuedTrack.showStatusMessage = !queuedTrack.showStatusMessage" class="icon" style="cursor: pointer" color="var(--color-error)" v-else />
+          </div>
+          <div class="status-menu" v-show="queuedTrack.showStatusMessage">
+            {{ queuedTrack.statusMsg }}
+          </div>
+        </div>
       </div>
-      <div class="row downloads-btns">
+      <div class="row footer">
         <IconFolder v-tooltip="'Open Downloads'" @click="invoke('browse_cmd', { path: appConfig.downloadPath })" size="30" style="cursor: pointer" class="icon" />
-        <IconTrash v-tooltip="'Clear Queue'" @click="infoItems = []" size="30" style="cursor: pointer" class="icon" />
+        <IconTrash v-tooltip="'Clear Queue'" @click="queuedTracks = []" size="30" style="cursor: pointer" class="icon" />
       </div>
     </div>
   </div>
@@ -137,7 +166,15 @@ onMounted(() => {
   padding-bottom: 0px;
 }
 
-.table-header {
+.download-expand-btn-expanded {
+  transform: rotate(180deg);
+}
+
+input {
+  flex-grow: 1;
+}
+
+.slavart-tracks-container .table-header {
   font-style: italic;
   background-color: var(--color-bg-1);
   position: sticky;
@@ -145,30 +182,13 @@ onMounted(() => {
   z-index: 1;
 }
 
-.table-header th {
+.slavart-tracks-container .table-header th {
   font-weight: 500;
   border-bottom: 1px solid var(--color-bg-2);
   text-wrap: nowrap;
 }
 
-.items-header > p {
-  font-style: italic;
-  margin: 0px;
-  margin-top: auto;
-  margin-bottom: auto;
-  margin-left: 20px;
-  margin-right: 20px;
-  text-align: center;
-}
-
-.info-items {
-  width: 0px;
-  display: none;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.downloads-btns {
+.queued-tracks-container .footer {
   margin-top: auto;
   justify-content: flex-end;
   padding: 5px;
@@ -179,83 +199,152 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
-.download-expand-btn-expanded {
-  transform: rotate(180deg);
-}
-
-input {
-  flex-grow: 1;
-}
-
-table {
+.slavart-tracks-container table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0px 4px;
 }
 
-tbody {
+.slavart-tracks-container tbody {
   font-size: 0.95em;
 }
 
-.table-filter-btn {
-  margin-top: 4px;
-  padding: 2px;
-  cursor: pointer;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transform: rotate(0deg);
-  transition: all 0.2s ease;
+.slavart-tracks-container .table-row {
+  transition: background-color 0.2s ease-in-out;
 }
 
-.table-filter-btn:hover {
-  border: 1px solid var(--color-accent);
+.slavart-tracks-container .table-row:hover {
   background-color: var(--color-hover);
 }
 
-.expanded {
-  display: flex;
-  width: 200px;
-}
-
-.filter-btn-expanded {
-  transform: rotate(90deg);
-}
-
-.filter-menu {
-  position: absolute;
-  min-width: max-content;
-  text-align: left;
-  margin-top: 8px;
-  padding: 10px;
+.slavart-tracks-container .img-container {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  margin-left: 20px;
+  margin-right: 20px;
+  margin-top: auto;
+  margin-bottom: auto;
   padding-top: 5px;
   padding-bottom: 5px;
-  background-color: var(--color-bg-2);
-  border: 1px solid var(--color-accent);
-  border-radius: 10px;
-  border-top-left-radius: 4px;
-  z-index: 2;
-}
-
-.filter-menu-arrow {
-  width: 0;
-  height: 0;
-  border-top: 0px solid transparent;
-  border-bottom: 15px solid var(--color-accent);
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  position: absolute;
-  top: -15px;
-  left: 1px;
-}
-
-.filter-menu label {
-  color: var(--color-text);
-  font-size: 1em;
-  font-weight: 400;
+  position: relative;
+  cursor: pointer;
   user-select: none;
 }
 
-.info-items::-webkit-scrollbar {
+.slavart-tracks-container .img-darken {
+  opacity: 100%;
+}
+
+.slavart-tracks-container .img-container:hover > .img-darken {
+  transition: opacity 0.2s ease;
+  opacity: 50%;
+}
+
+.slavart-tracks-container img {
+  display: block;
+  border-radius: 8px;
+}
+
+.slavart-tracks-container .table-row td {
+  max-width: 10px;
+  overflow: scroll;
+  white-space: nowrap;
+  -ms-overflow-style: none;
+}
+
+.slavart-tracks-container .table-row td::-webkit-scrollbar {
+  display: none;
+}
+
+.slavart-tracks-container .text-pad {
+  padding-left: 10px;
+}
+
+.slavart-tracks-container .icon-download {
+  opacity: 0%;
+  position: absolute;
+  top: 28px;
+  left: 26px;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.slavart-tracks-container .img-container:hover > .icon-download {
+  transition: opacity 0.2s ease;
+  opacity: 100%;
+}
+
+.queued-tracks-container {
+  width: 0px;
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.queued-tracks-container .queued-track {
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 60px;
+  padding-top: 10px;
+  padding-left: 2px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--color-bg-2);
+}
+
+.queued-tracks-container .queued-track p {
+  text-align: left;
+  margin-top: 2px;
+  margin-bottom: 0px;
+  margin-right: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow: scroll;
+  white-space: nowrap;
+  -ms-overflow-style: none;
+}
+
+.queued-tracks-container p::-webkit-scrollbar {
+  display: none;
+}
+
+.queued-tracks-container img {
+  border-radius: 10px;
+  padding: 5px;
+  user-select: none;
+}
+
+.queued-tracks-container .status-menu {
+  text-align: left;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding: 5px;
+  overflow-wrap: break-word;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--color-accent);
+  border-radius: 5px;
+}
+
+.queued-tracks-container .icon-loading {
+  animation: icon-loading-anim 1.8s linear infinite;
+}
+
+.queued-tracks-container .icon-trash {
+  opacity: 0%;
+  transition: opacity 0.2s ease;
+}
+
+.queued-track:hover .icon-trash {
+  opacity: 100%;
+}
+
+.queued-tracks-container.expanded {
+  display: flex !important;
+  width: 200px !important;
+}
+
+.queued-tracks-container::-webkit-scrollbar {
   width: 8px;
 }
 </style>

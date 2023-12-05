@@ -4,7 +4,9 @@ import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
 import { isEqual, remove as loRemove } from "lodash";
-import { IconExternalLink, IconCircleCheck, IconPointFilled, IconLoader2, IconDotsVertical, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
+import { IconExternalLink, IconCircleCheck, IconPointFilled, IconLoader2, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
+
+import TableFilter from "../components/TableFilter.vue";
 
 import { appConfig, globalEmitter, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
 
@@ -96,14 +98,14 @@ async function getDzrsTrackObjectsDir() {
 
 // Called when setting a new local files directory from the main panel, the track objects have to be reassigned to match the files in the new directory
 // a call is also made to the backend to instruct the watcher to watch the new directory
-async function updateViewPath() {
+async function changeFilesDir() {
   const path = await open({ defaultPath: appConfig.directoryViewPath, directory: true, multiple: false })
     .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
+    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "changeFilesDir", msg: err }));
   if (path !== null) {
     activeLocalFilesPath.value = path;
     await getDzrsTrackObjectsDir();
-    await invoke("watch_directory", { path: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateViewPath", msg: err }));
+    await invoke("watch_dir", { path: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "changeFilesDir", msg: err }));
   }
 }
 
@@ -151,14 +153,6 @@ function selectFiles(event, file) {
   } else {
     selectedFilePaths.value = [file.filePath];
   }
-}
-
-// Updates the config file based on which columns of the local files panel are currently enabled
-// This means the selected columns keep a persistent state between program restarts
-async function saveFilterColumn(filterColumnDirView) {
-  await invoke("config_set", { key: filterColumnDirView.config, value: `${filterColumnDirView.enabled}` })
-    .then(() => "")
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterColumn", msg: err }));
 }
 
 // Fetches tags from deezer for the selected flac files, then retrieves the new track objects from backend
@@ -240,7 +234,7 @@ onBeforeMount(async () => {
     <div class="row" style="gap: 5px; flex-grow: 1">
       <div class="directory-panel">
         <div class="row" style="gap: 10px; margin-bottom: 8px">
-          <button style="padding: 2px 8px" @click="updateViewPath">
+          <button style="padding: 2px 8px" @click="changeFilesDir">
             <div class="row" style="color: var(--color-text)">
               <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px" />
               Open
@@ -274,16 +268,7 @@ onBeforeMount(async () => {
             <thead class="table-header">
               <tr>
                 <th style="width: 20px; position: relative">
-                  <IconDotsVertical size="18" class="icon table-filter-btn" :class="{ 'filter-btn-expanded': showFilterMenu }" @click="showFilterMenu = !showFilterMenu" />
-                  <div class="filter-menu" v-if="showFilterMenu" @click.stop>
-                    <div class="filter-menu-arrow"></div>
-                    <div v-for="column in filterColumnsDirView" :key="column.key">
-                      <label>
-                        <input class="filterItemInput" type="checkbox" @change="saveFilterColumn(column)" :disabled="column.readonly" v-model="column.enabled" />
-                        {{ column.label }}
-                      </label>
-                    </div>
-                  </div>
+                  <TableFilter :columns="filterColumnsDirView" />
                 </th>
                 <th><!-- Reserved for icon --></th>
                 <th v-for="column in filterColumnsDirView" :key="column.key" v-show="column.enabled">
@@ -1057,21 +1042,6 @@ p {
   width: 30px;
 }
 
-.table-filter-btn {
-  margin-top: 4px;
-  padding: 2px;
-  cursor: pointer;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transform: rotate(0deg);
-  transition: all 0.2s ease;
-}
-
-.table-filter-btn:hover {
-  border: 1px solid var(--color-accent);
-  background-color: var(--color-hover);
-}
-
 .tag-accent-text {
   color: #998140;
 }
@@ -1079,44 +1049,6 @@ p {
 .expanded {
   display: flex;
   width: 200px;
-}
-
-.filter-btn-expanded {
-  transform: rotate(90deg);
-}
-
-.filter-menu {
-  position: absolute;
-  min-width: max-content;
-  text-align: left;
-  margin-top: 8px;
-  padding: 10px;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  background-color: var(--color-bg-2);
-  border: 1px solid var(--color-accent);
-  border-radius: 10px;
-  border-top-left-radius: 4px;
-  z-index: 2;
-}
-
-.filter-menu-arrow {
-  width: 0;
-  height: 0;
-  border-top: 0px solid transparent;
-  border-bottom: 15px solid var(--color-accent);
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  position: absolute;
-  top: -15px;
-  left: 1px;
-}
-
-.filter-menu label {
-  color: var(--color-text);
-  font-size: 1em;
-  font-weight: 400;
-  user-select: none;
 }
 
 ::-webkit-scrollbar {

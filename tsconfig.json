@@ -1,0 +1,6 @@
+{
+    "compilerOptions": {
+        "forceConsistentCasingInFileNames": false,
+        "allowJs": true
+    }
+}

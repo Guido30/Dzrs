@@ -32,15 +32,16 @@ appWindow.listen("page-change", (event) => {
 });
 
 onMounted(async () => {
-  // Prevent default browser context menu
+  // Initialize the file watcher
+  if (appConfig.directoryViewPath) {
+    await invoke("watch_dir", { dir: appConfig.directoryViewPath }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_dir", msg: err }));
+  }
+  // Notify the user if loading the config failed
+  if (!appConfig._loaded && !appConfig._created) {
+    globalEmitter.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
+  }
+  // Prevent default browser right click context menu
   document.addEventListener("contextmenu", (event) => event.preventDefault());
-  const path = appConfig.directoryViewPath;
-  if (path) {
-    await invoke("watch_dir", { dir: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_directory", msg: err }));
-  }
-  if (!appConfig._loaded) {
-    globalEmitter.emit("notification-add", { type: "Info", origin: "Config", msg: "Config file could not be loaded! Ignore this message if its the first time running Dzrs" });
-  }
   // Finally when everything is initialized, show the main window
   await appWindow.show();
 });

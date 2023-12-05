@@ -2,13 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DzrsConfiguration {
     #[serde(rename = "_path")]
-    _path: PathBuf,
+    _path: String,
     #[serde(rename = "_loaded")]
     _loaded: bool,
     #[serde(rename = "_created")]
@@ -62,7 +62,7 @@ pub struct DzrsConfiguration {
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct DzrsConfigurationParsed {
-    _path: PathBuf,
+    _path: String,
     _loaded: bool,
     _created: bool,
     pub download_path: String,
@@ -113,27 +113,31 @@ pub struct DzrsConfigurationParsed {
 }
 
 impl DzrsConfiguration {
-    pub fn from_file(path: PathBuf) -> Self {
+    pub fn load<P: AsRef<Path>>(path: P) -> Self {
         let mut result = DzrsConfiguration::default();
         let mut loaded = false;
         let mut created = false;
-        let file = File::open(path.clone());
-        if let Ok(file) = file {
-            let reader = BufReader::new(file);
-            let serialized_file: Result<DzrsConfiguration, _> = serde_json::from_reader(reader);
-            match serialized_file {
-                Ok(res) => {
-                    loaded = true;
-                    result = res;
-                }
-                Err(_) => {
-                    let _conf_str = serde_json::to_string_pretty(&Self::default()).unwrap();
-                    let _ = std::fs::write(path.clone(), _conf_str);
-                    created = true;
-                }
-            };
+        match File::open(&path) {
+            Ok(file) => {
+                let reader = BufReader::new(file);
+                match serde_json::from_reader(reader) {
+                    Ok(serialized_file) => {
+                        loaded = true;
+                        result = serialized_file;
+                    }
+                    Err(_) => {
+                        let c = serde_json::to_vec_pretty(&Self::default()).unwrap();
+                        let _ = std::fs::write(&path, c);
+                    }
+                };
+            }
+            Err(_) => {
+                let c = serde_json::to_vec_pretty(&Self::default()).unwrap();
+                let _ = std::fs::write(&path, c);
+                created = true;
+            }
         };
-        result._path = path.clone();
+        result._path = path.as_ref().to_str().unwrap().to_owned();
         result._loaded = loaded;
         result._created = created;
         result
@@ -254,7 +258,7 @@ impl DzrsConfiguration {
 impl Default for DzrsConfiguration {
     fn default() -> Self {
         Self {
-            _path: PathBuf::new(),
+            _path: String::new(),
             _loaded: false,
             _created: false,
             download_path: "".into(),

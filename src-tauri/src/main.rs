@@ -22,7 +22,7 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, Window};
 
-pub fn app_data_dir() -> PathBuf {
+pub fn platform_app_dir() -> PathBuf {
     let mut path = PathBuf::new();
     match OS {
         "linux" => {
@@ -370,31 +370,23 @@ async fn browse_cmd(path: String) -> Result<(), String> {
 }
 
 fn main() {
-    let app_data_path = app_data_dir();
-    let config_path = app_data_path.join("config.json");
+    let app_dir = platform_app_dir();
+    let config_path = app_dir.join("config.json");
     if !config_path.exists() {
         let _ = std::fs::create_dir_all(config_path.parent().unwrap()); //safe unwrap
         let _ = std::fs::write(config_path.clone(), b"");
     }
-    let config: Mutex<DzrsConfiguration> = Mutex::new(DzrsConfiguration::from_file(config_path));
+    let config: Mutex<DzrsConfiguration> = Mutex::new(DzrsConfiguration::load(config_path));
     let tracks_obj: Mutex<DzrsTrackObjectWrapper> = Mutex::new(DzrsTrackObjectWrapper::default());
     let tagger: DeezerTagger = DeezerTagger::new();
     let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
         .setup(|app| {
-            let window = app.get_window("main").unwrap();
-            // Setup file watcher
-            // let mut w: RecommendedWatcher = recommended_watcher(move |res| match res {
-            //     Ok(e) => {
-            //         let _ = window.emit("watcher_triggered", e);
-            //     }
-            //     _ => (),
-            // });
             // Open Devtools in debug builds
             #[cfg(debug_assertions)]
             {
-                window.open_devtools();
+                app.get_window("main").unwrap().open_devtools();
             }
             Ok(())
         })
