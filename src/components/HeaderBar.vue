@@ -1,34 +1,30 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, toRef } from "vue";
 import { appWindow } from "@tauri-apps/api/window";
 import { IconLayoutList } from "@tabler/icons-vue";
 
-import { globalEmitter } from "../globals";
+import { activePageNameGlobal, showNotificationsGlobal, showNotificationDotGlobal } from "../globals";
 
-const emit = defineEmits(["showNotifications"]);
+const activePageName = toRef(activePageNameGlobal);
+const showNotifications = toRef(showNotificationsGlobal);
+const showNotificationDot = toRef(showNotificationDotGlobal);
 
-const activeButton = ref("Main");
-const showNotifications = ref(false);
-const notificationDot = ref(null);
-
-function emitPageChange(page) {
-  activeButton.value = page;
-  appWindow.emit("page-change", page);
+async function changeView(page) {
+  activePageName.value = page;
+  await appWindow.emit("view-change", page);
 }
 
-function emitShowNotifications() {
+async function toggleNotifications() {
   showNotifications.value = !showNotifications.value;
-  emit("showNotifications", showNotifications.value);
+  await appWindow.emit("show-notifications", showNotifications.value);
 }
 
-onMounted(() => {
-  globalEmitter.on("notifications-state", (value) => {
-    if (value === true) {
-      notificationDot.value.classList.remove("hidden");
-      notificationDot.value.classList.add("shown");
+onMounted(async () => {
+  await appWindow.listen("show-notifications-dot", (value) => {
+    if (value.payload === true) {
+      showNotificationDot.value = true;
     } else {
-      notificationDot.value.classList.remove("shown");
-      notificationDot.value.classList.add("hidden");
+      showNotificationDot.value = false;
     }
   });
 });
@@ -41,21 +37,21 @@ onMounted(() => {
       <div style="flex-grow: 1"><!-- Fallback spacer --></div>
     </slot>
     <div class="row header-btns">
-      <div class="row header-btn" @click="emitPageChange('Main')" :class="{ active: activeButton === 'Main' }">
+      <div class="row header-btn" @click="changeView('Main')" :class="{ active: activePageName === 'Main' }">
         <p>Tagging</p>
       </div>
-      <div class="row header-btn" @click="emitPageChange('Download')" :class="{ active: activeButton === 'Download' }">
+      <div class="row header-btn" @click="changeView('Download')" :class="{ active: activePageName === 'Download' }">
         <p>Download</p>
       </div>
-      <div class="row header-btn" @click="emitPageChange('Settings')" :class="{ active: activeButton === 'Settings' }">
+      <div class="row header-btn" @click="changeView('Settings')" :class="{ active: activePageName === 'Settings' }">
         <p>Settings</p>
       </div>
-      <div class="row header-btn" @click="emitPageChange('About')" :class="{ active: activeButton === 'About' }">
+      <div class="row header-btn" @click="changeView('About')" :class="{ active: activePageName === 'About' }">
         <p>About</p>
       </div>
-      <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative" @click="emitShowNotifications">
+      <div class="row header-btn" :class="{ 'btn-hover': showNotifications }" style="position: relative" @click="toggleNotifications">
         <IconLayoutList class="icon" />
-        <div class="notification-dot hidden" ref="notificationDot"></div>
+        <div class="notification-dot" :class="{ shown: showNotificationDot, hidden: !showNotificationDot }"></div>
       </div>
     </div>
   </div>
@@ -121,19 +117,18 @@ h1 {
   height: 15px;
   position: absolute;
   right: 10px;
+  top: 5px;
   border-radius: 50%;
   background-color: var(--color-accent);
   transition: all 0.2s ease;
-  animation-fill-mode: forwards;
 }
 
 .hidden {
   opacity: 0%;
-  top: 25px;
 }
 
 .shown {
-  animation: notification-dot-anim 0.4s forwards;
+  opacity: 100%;
 }
 
 img {
@@ -142,6 +137,7 @@ img {
   margin-top: auto;
   margin-bottom: auto;
   user-select: none;
+  padding-right: 10px;
 }
 
 p {
@@ -149,21 +145,5 @@ p {
   margin-top: 0px;
   margin-bottom: 0px;
   user-select: none;
-}
-
-@keyframes notification-dot-anim {
-  0% {
-    opacity: 0%;
-    top: 25px;
-  }
-  60% {
-    opacity: 100%;
-  }
-  80% {
-    top: 0px;
-  }
-  100% {
-    top: 5px;
-  }
 }
 </style>

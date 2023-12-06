@@ -1,22 +1,20 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { appWindow } from "@tauri-apps/api/window";
 import { IconX, IconTrash } from "@tabler/icons-vue";
 
-import { globalEmitter } from "../globals";
-
 const notifications = ref([]);
-const hasNotifications = computed(() => !!notifications.value.length);
-const noficationsCount = computed(() => notifications.value.length);
+const notificationsCount = computed(() => notifications.value.length);
 
-onMounted(() => {
-  globalEmitter.on("notification-add", (item) => {
-    globalEmitter.emit("instant-notification-add", item);
-    notifications.value.push(item);
+onMounted(async () => {
+  await appWindow.listen("notification-add", async (item) => {
+    await appWindow.emit("instant-notification-add", item.payload);
+    notifications.value.push(item.payload);
   });
 });
 
-watch(hasNotifications, async (value, _) => {
-  globalEmitter.emit("notifications-state", value);
+watch(notificationsCount, async () => {
+  await appWindow.emit("show-notifications-dot", !!notificationsCount.value);
 });
 </script>
 
@@ -27,7 +25,7 @@ watch(hasNotifications, async (value, _) => {
       <div style="width: 34px; margin-top: auto; margin-bottom: auto; padding-right: 10px">
         <div class="count-wrapper">
           <p style="font-style: normal; font-size: 0.8em; margin-top: 5px; margin-bottom: 5px">
-            {{ noficationsCount }}
+            {{ notificationsCount }}
           </p>
         </div>
       </div>

@@ -1,10 +1,13 @@
 <script setup>
-import { ref, reactive, computed } from "vue";
+import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
+import { appWindow } from "@tauri-apps/api/window";
 import { IconSearch, IconFolder, IconTrash, IconArrowBarLeft, IconLoader2, IconDownload, IconAlertCircle, IconCircleCheck } from "@tabler/icons-vue";
-import TableFilter from "../components/TableFilter.vue";
 
-import { appConfig, globalEmitter, filterColumnsDownload } from "../globals";
+import TableFilter from "../components/TableFilter.vue";
+import HeaderBar from "../components/HeaderBar.vue";
+
+import { appConfig, filterColumnsDownload } from "../globals";
 
 const slavartTracks = ref([]);
 const queuedTracks = ref([]);
@@ -13,10 +16,6 @@ const inputElement = ref(null);
 // Visibility toggles for various elements
 const isDownloadExpanded = ref(false);
 const isSearchPending = ref(false);
-
-// Style variable for animating the track image when cliking on it
-// TODO ITS CURRENTLY GLOBAL FOR EVERY IMG TAG
-const imgDarkenStyle = reactive({ transform: "scale(1.0)" });
 
 function parseFileName(fileData, template) {
   const fileName = template
@@ -41,15 +40,15 @@ async function searchTracks() {
   isSearchPending.value = true;
   await invoke("get_slavart_tracks", { query: `${inputElement.value.value}` })
     .then((result) => (slavartTracks.value = result.items))
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "searchTracks", msg: err }));
   isSearchPending.value = false;
 }
 
 async function downloadTrack(tr) {
   // Animate the track image
-  imgDarkenStyle.transform = "scale(1.1)";
+  tr.transform = "scale(1.1)";
   setTimeout(() => {
-    imgDarkenStyle.transform = "scale(1.0)";
+    tr.transform = "scale(1.0)";
   }, 100);
   // Download the track
   if (!queuedTracks.value.find((tr1) => tr1.id === tr.id)) {
@@ -65,23 +64,25 @@ async function downloadTrack(tr) {
         queuedTracks.value[i].statusMsg = err;
       });
   } else {
-    globalEmitter.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `Track ${tr.title} - ${tr.albumTitle} is already in the queue` });
+    await appWindow.emit("notification-add", { type: "Info", origin: "downloadTrack", msg: `This track is already in the queue` });
   }
 }
 </script>
 
 <template>
+  <HeaderBar>
+    <div class="row header-content">
+      <input placeholder="Song name..." spellcheck="false" @keypress.enter="searchTracks" ref="inputElement" class="header-search-input" />
+      <button style="margin-left: 10px" @click="searchTracks">
+        <IconSearch size="20" color="var(--color-text)" class="icon" />
+      </button>
+      <button style="margin-left: 10px" @click="isDownloadExpanded = !isDownloadExpanded">
+        <IconArrowBarLeft size="20" color="var(--color-text)" class="icon" :class="{ 'download-expand-btn-expanded': isDownloadExpanded }" />
+      </button>
+    </div>
+  </HeaderBar>
   <div class="container" style="flex-direction: row; gap: 15px; max-width: 100vw">
     <div class="column" style="flex-grow: 1; gap: 15px">
-      <div class="row" style="flex-basis: 50px">
-        <input placeholder="Song name..." spellcheck="false" @keypress.enter="searchTracks" ref="inputElement" />
-        <button style="margin-left: 10px" @click="searchTracks">
-          <IconSearch size="20" color="var(--color-text)" class="icon" />
-        </button>
-        <button style="margin-left: 10px" @click="isDownloadExpanded = !isDownloadExpanded">
-          <IconArrowBarLeft size="20" color="var(--color-text)" class="icon" :class="{ 'download-expand-btn-expanded': isDownloadExpanded }" />
-        </button>
-      </div>
       <div class="row" style="flex-grow: 1; overflow-y: auto; gap: 15px">
         <div class="frame slavart-tracks-container" style="flex-grow: 1">
           <table>
@@ -101,7 +102,7 @@ async function downloadTrack(tr) {
                 <td><!-- Empty cell reserved for table filter --></td>
                 <td class="img-container" @click="downloadTrack(slavTrack)">
                   <IconDownload size="30" class="icon-download" />
-                  <div class="img-darken" :style="imgDarkenStyle">
+                  <div class="img-darken" :style="{ transform: slavTrack.transform }">
                     <img :src="slavTrack.thumbnail" width="50" />
                   </div>
                 </td>
@@ -154,7 +155,7 @@ async function downloadTrack(tr) {
 
 <style scoped>
 .container {
-  height: calc(100vh - 70px);
+  height: calc(100vh - 68px);
 }
 
 .frame {
@@ -174,7 +175,31 @@ input {
   flex-grow: 1;
 }
 
-.slavart-tracks-container .table-header {
+.header-content {
+  flex-grow: 1;
+  border-right: 1px solid var(--color-accent);
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-left: 20px;
+  margin-right: 20px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.header-content > button {
+  padding: 2px 15px;
+}
+
+.header-search-input {
+  padding: 2px 20px;
+  font-size: 0.9em;
+  height: 70%;
+  margin-top: auto;
+  margin-bottom: auto;
+  border: 1px solid var(--color-accent);
+}
+
+.table-header {
   font-style: italic;
   background-color: var(--color-bg-1);
   position: sticky;
@@ -182,21 +207,10 @@ input {
   z-index: 1;
 }
 
-.slavart-tracks-container .table-header th {
+.table-header th {
   font-weight: 500;
   border-bottom: 1px solid var(--color-bg-2);
   text-wrap: nowrap;
-}
-
-.queued-tracks-container .footer {
-  margin-top: auto;
-  justify-content: flex-end;
-  padding: 5px;
-  border-top: 1px solid var(--color-bg-2);
-  position: sticky;
-  bottom: 0px;
-  background-color: var(--color-bg-1);
-  transition: all 0.2s ease;
 }
 
 .slavart-tracks-container table {
@@ -280,6 +294,17 @@ input {
   display: none;
   flex-direction: column;
   flex-shrink: 0;
+}
+
+.queued-tracks-container .footer {
+  margin-top: auto;
+  justify-content: flex-end;
+  padding: 5px;
+  border-top: 1px solid var(--color-bg-2);
+  position: sticky;
+  bottom: 0px;
+  background-color: var(--color-bg-1);
+  transition: all 0.2s ease;
 }
 
 .queued-tracks-container .queued-track {

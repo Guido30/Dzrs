@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onBeforeMount } from "vue";
+import { ref, computed, onBeforeMount, toRef } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
@@ -7,8 +7,9 @@ import { isEqual, remove as loRemove } from "lodash";
 import { IconExternalLink, IconCircleCheck, IconPointFilled, IconLoader2, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
 import TableFilter from "../components/TableFilter.vue";
+import HeaderBar from "../components/HeaderBar.vue";
 
-import { appConfig, globalEmitter, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
+import { appConfig, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
 
 // Track objects
 const dzrsTrackObjects = ref([{}]);
@@ -66,7 +67,7 @@ async function getDzrsTrackObjects(paths, remove) {
   // Get the stored tracks
   const result = await invoke("tracks_get", { paths: paths ? paths : null })
     .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjects", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjects", msg: err }));
   if (result) {
     // Join tracks found in both frontend and backend
     result.forEach((newTr) => {
@@ -89,7 +90,7 @@ async function getDzrsTrackObjectsDir() {
   tracksIsLoading.value = true;
   const result = await invoke("tracks_get_dir", { dir: activeLocalFilesPath.value })
     .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjectsDir", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "getDzrsTrackObjectsDir", msg: err }));
   if (result) {
     dzrsTrackObjects.value = result;
   }
@@ -101,11 +102,11 @@ async function getDzrsTrackObjectsDir() {
 async function changeFilesDir() {
   const path = await open({ defaultPath: appConfig.directoryViewPath, directory: true, multiple: false })
     .then((res) => res)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "changeFilesDir", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "changeFilesDir", msg: err }));
   if (path !== null) {
     activeLocalFilesPath.value = path;
     await getDzrsTrackObjectsDir();
-    await invoke("watch_dir", { path: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "changeFilesDir", msg: err }));
+    await invoke("watch_dir", { dir: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "changeFilesDir", msg: err }));
   }
 }
 
@@ -164,7 +165,7 @@ async function fetchDzrsTrackObjects() {
   } else {
     flacs = dzrsTrackObjects.value.filter((t) => t.fileExtension === "flac" && selectedFilePaths.value.includes(t.filePath)).map((f) => f.filePath);
   }
-  await invoke("tracks_fetch", { paths: flacs }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "fetchDzrsTrackObjects", msg: err.join(" ") }));
+  await invoke("tracks_fetch", { paths: flacs }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchDzrsTrackObjects", msg: err.join(" ") }));
   await getDzrsTrackObjects(flacs);
   tagsIsFetchingOrSaving.value = false;
 }
@@ -181,7 +182,7 @@ async function saveModifiedTracks() {
     }
     if (modifiedTracks.length !== 0) {
       for (const t of modifiedTracks) {
-        await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err }));
+        await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err }));
       }
       await getDzrsTrackObjects(modifiedTracks.map((t) => t.filePath));
     }
@@ -230,39 +231,43 @@ onBeforeMount(async () => {
 </script>
 
 <template>
+  <HeaderBar>
+    <div class="row header-content">
+      <button style="padding: 2px 8px" @click="changeFilesDir">
+        <div class="row" style="color: var(--color-text)">
+          <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px" />
+          <span>Open</span>
+        </div>
+      </button>
+      <div class="row" style="padding: 2px 6px; flex-grow: 1; justify-content: start; overflow: hidden">
+        <p style="font-size: 0.9em; font-weight: 300; letter-spacing: 0.11em; white-space: nowrap; max-width: 20px">
+          {{ activeLocalFilesPath ? activeLocalFilesPath : "..." }}
+        </p>
+      </div>
+      <button style="padding: 2px 8px" @click="invoke('browse_cmd', { path: appConfig.directoryViewPath })" v-show="appConfig.directoryViewPath">
+        <div class="row" style="color: var(--color-text)">
+          <span>Browse</span>
+          <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
+        </div>
+      </button>
+      <button style="padding: 2px 8px" @click="fetchDzrsTrackObjects" :disabled="tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
+        <div class="row" style="color: var(--color-text)" v-tooltip.bottom="{ content: 'Retrieve Deezer Tags' }">
+          <span>Fetch</span>
+          <IconClipboardList v-if="!tagsIsFetchingOrSaving" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
+          <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px" />
+        </div>
+      </button>
+      <button style="padding: 2px 8px" @click="saveModifiedTracks" :disabled="!tagsNeedSave || tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
+        <div class="row" style="color: var(--color-text)">
+          <span>Save</span>
+          <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
+        </div>
+      </button>
+    </div>
+  </HeaderBar>
   <div class="container" style="gap: 5px">
     <div class="row" style="gap: 5px; flex-grow: 1">
       <div class="directory-panel">
-        <div class="row" style="gap: 10px; margin-bottom: 8px">
-          <button style="padding: 2px 8px" @click="changeFilesDir">
-            <div class="row" style="color: var(--color-text)">
-              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px" />
-              Open
-            </div>
-          </button>
-          <p style="font-weight: 300; letter-spacing: 0.12em; padding: 2px 6px; margin-right: auto" class="button">
-            {{ activeLocalFilesPath ? activeLocalFilesPath : "..." }}
-          </p>
-          <button style="padding: 2px 8px; margin-left: auto" @click="invoke('browse_cmd', { path: appConfig.directoryViewPath })" v-show="appConfig.directoryViewPath">
-            <div class="row" style="color: var(--color-text)">
-              Browse
-              <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
-            </div>
-          </button>
-          <button style="padding: 2px 8px" @click="fetchDzrsTrackObjects" :disabled="tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
-            <div class="row" style="color: var(--color-text)" v-tooltip.bottom="{ content: 'Retrieve Deezer Tags' }">
-              Fetch
-              <IconClipboardList v-if="!tagsIsFetchingOrSaving" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
-              <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px" />
-            </div>
-          </button>
-          <button style="padding: 2px 8px" @click="saveModifiedTracks" :disabled="!tagsNeedSave || tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
-            <div class="row" style="color: var(--color-text)">
-              Save
-              <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
-            </div>
-          </button>
-        </div>
         <div class="frame" @click.self="selectedFilePaths = []">
           <table>
             <thead class="table-header">
@@ -782,7 +787,7 @@ onBeforeMount(async () => {
 }
 
 .source-panel {
-  flex-basis: 400px;
+  flex-basis: 0px;
 }
 
 .directory-panel .frame {
@@ -833,6 +838,20 @@ onBeforeMount(async () => {
 p {
   margin-top: auto;
   margin-bottom: auto;
+}
+
+.header-content {
+  flex-grow: 1;
+  border-right: 1px solid var(--color-accent);
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 20px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.header-content span {
+  user-select: none;
 }
 
 .directory-panel table {
@@ -1005,15 +1024,16 @@ p {
 }
 
 @media (max-width: 1150px) {
+  .header-content span {
+    display: none;
+  }
+
   .sources-item-text-head {
     display: none;
   }
 }
 
 @media (max-width: 1000px) {
-  .sources-item-text-col:first-of-type {
-    display: none;
-  }
   .sources-item-text-col:nth-of-type(2) {
     flex-grow: 1;
   }

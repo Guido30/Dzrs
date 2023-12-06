@@ -1,9 +1,8 @@
 <script setup>
 import { ref, toRef, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
+import { appWindow } from "@tauri-apps/api/window";
 import { IconDotsVertical } from "@tabler/icons-vue";
-
-import { globalEmitter } from "../globals";
 
 const props = defineProps(["columns"]);
 const columns = toRef(props.columns);
@@ -12,7 +11,7 @@ const columns = toRef(props.columns);
 const expanded = ref(false);
 
 async function saveFilterCol(col) {
-  await invoke("config_set", { key: col.config, value: `${col.enabled}` }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFilterCol", msg: err }));
+  await invoke("config_set", { key: col.config, value: `${col.enabled}` }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "saveFilterCol", msg: err }));
 }
 
 onMounted(() => {

@@ -6,50 +6,52 @@ import Main from "./pages/Main.vue";
 import Download from "./pages/Download.vue";
 import Settings from "./pages/Settings.vue";
 import About from "./pages/About.vue";
-import HeaderBar from "./components/HeaderBar.vue";
 import Notifications from "./components/Notifications.vue";
 import InstantNotifications from "./components/InstantNotifications.vue";
 
-import { appConfig, globalEmitter } from "./globals";
+import { appConfig } from "./globals";
 
 const activePage = shallowRef(Main);
 const showNotifications = ref(false);
 
-appWindow.listen("page-change", (event) => {
-  switch (event.payload) {
-    case "Download":
-      activePage.value = Download;
-      break;
-    case "Settings":
-      activePage.value = Settings;
-      break;
-    case "About":
-      activePage.value = About;
-      break;
-    default:
-      activePage.value = Main;
-  }
-});
-
 onMounted(async () => {
+  // Listener for swapping between views
+  await appWindow.listen("view-change", (event) => {
+    switch (event.payload) {
+      case "Download":
+        activePage.value = Download;
+        break;
+      case "Settings":
+        activePage.value = Settings;
+        break;
+      case "About":
+        activePage.value = About;
+        break;
+      default:
+        activePage.value = Main;
+    }
+  });
+  // Listener for toggling the notifications panel on and off
+  await appWindow.listen("show-notifications", (event) => {
+    showNotifications.value = event.payload;
+  });
   // Initialize the file watcher
   if (appConfig.directoryViewPath) {
-    await invoke("watch_dir", { dir: appConfig.directoryViewPath }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "watch_dir", msg: err }));
-  }
-  // Notify the user if loading the config failed
-  if (!appConfig._loaded && !appConfig._created) {
-    globalEmitter.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
+    await invoke("watch_dir", { dir: appConfig.directoryViewPath }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "watch_dir", msg: err }));
   }
   // Prevent default browser right click context menu
   document.addEventListener("contextmenu", (event) => event.preventDefault());
   // Finally when everything is initialized, show the main window
   await appWindow.show();
+  // Notify the user if loading the config failed
+  if (!appConfig._loaded && !appConfig._created) {
+    appWindow.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
+  }
 });
 </script>
 
 <template>
   <div class="container" style="height: 100vh; padding: 0px">
-    <HeaderBar @showNotifications="(res) => (showNotifications = res)" />
     <keep-alive>
       <component :is="activePage" />
     </keep-alive>
@@ -221,6 +223,12 @@ button:disabled {
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1250px) {
+  :root {
+    font-size: 14px;
   }
 }
 </style>

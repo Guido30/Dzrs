@@ -3,6 +3,8 @@ import { ref, onMounted } from "vue";
 import { IconBrandGithub } from "@tabler/icons-vue";
 import { getVersion } from "@tauri-apps/api/app";
 
+import HeaderBar from "../components/HeaderBar.vue";
+
 const appVersion = ref();
 
 onMounted(async () => {
@@ -11,6 +13,7 @@ onMounted(async () => {
 </script>
 
 <template>
+  <HeaderBar />
   <div class="container">
     <div class="frame">
       <div class="column">

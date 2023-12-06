@@ -339,8 +339,8 @@ async fn download_track(
 // immediately reflected in the frontend
 #[tauri::command]
 async fn watch_dir(
-    window: Window,
     dir: String,
+    window: Window,
     watcher: State<'_, Arc<Mutex<Option<RecommendedWatcher>>>>,
 ) -> Result<(), String> {
     let mut w: RecommendedWatcher =

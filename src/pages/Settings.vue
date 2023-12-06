@@ -4,11 +4,14 @@ import { IconFolder, IconFolderFilled, IconTextSize, IconCheck, IconFileFilled, 
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
+import { appWindow } from "@tauri-apps/api/window";
 import { downloadDir } from "@tauri-apps/api/path";
 import { writeText } from "@tauri-apps/api/clipboard";
-import SettingsGroup from "../components/SettingsGroup.vue";
 
-import { appConfig, globalEmitter, filterColumnsDownload, tagSeparators } from "../globals";
+import SettingsGroup from "../components/SettingsGroup.vue";
+import HeaderBar from "../components/HeaderBar.vue";
+
+import { appConfig, filterColumnsDownload, tagSeparators } from "../globals";
 
 const downloadInputValue = ref(appConfig.downloadPath);
 const fileTemplateInput = ref(null);
@@ -18,46 +21,47 @@ const localFilesInputValue = ref(appConfig.directoryViewPath);
 async function setDownloadPath() {
   const defaultPath = await downloadDir()
     .then((result) => result)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
   const path = await open({ defaultPath: defaultPath, directory: true, multiple: false })
     .then((result) => result)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
   if (path !== null) {
-    await invoke("config_set", { key: "download_path", value: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
+    await invoke("config_set", { key: "download_path", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
     appConfig.downloadPath = path;
     downloadInputValue.value = path;
-    globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
+    appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   }
 }
 
 async function saveFileTemplate() {
-  await invoke("config_set", { key: "file_template", value: fileTemplateInput.value.value }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "saveFileTemplate", msg: err }));
+  await invoke("config_set", { key: "file_template", value: fileTemplateInput.value.value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "saveFileTemplate", msg: err }));
   appConfig.fileTemplate = fileTemplateInput.value.value;
-  globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
+  appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
 }
 
 async function updateConfig(key, value) {
-  await invoke("config_set", { key: key, value: value }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "updateConfig", msg: err }));
+  await invoke("config_set", { key: key, value: value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "updateConfig", msg: err }));
 }
 
 async function copyEventTargetToClipboard(event) {
-  await writeText(event.target.innerHTML).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "copyEventTargetToClipboard", msg: err }));
+  await writeText(event.target.innerHTML).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "copyEventTargetToClipboard", msg: err }));
 }
 
 async function setLocalFilesPath() {
   const path = await open({ directory: true, multiple: false })
     .then((result) => result)
-    .catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
   if (path !== null) {
-    await invoke("config_set", { key: "directory_view_path", value: path }).catch((err) => globalEmitter.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
+    await invoke("config_set", { key: "directory_view_path", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
     appConfig.directoryViewPath = path;
     localFilesInputValue.value = path;
-    globalEmitter.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
+    appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   }
 }
 </script>
 
 <template>
+  <HeaderBar />
   <div class="container" style="overflow-y: auto">
     <div class="column">
       <SettingsGroup :body-as-column="true" class="group-download">
@@ -237,7 +241,7 @@ async function setLocalFilesPath() {
               @change="
                 (e) => {
                   updateConfig('tag_separator', e.target.value);
-                  globalEmitter.emit('instant-notification-add', { type: 'Info', origin: 'Settings', msg: 'Setting Updated!' });
+                  appWindow.emit('instant-notification-add', { type: 'Info', origin: 'Settings', msg: 'Setting Updated!' });
                 }
               ">
               <option v-for="(sep, i) in tagSeparators" :key="i" :value="sep">"{{ sep }}"</option>

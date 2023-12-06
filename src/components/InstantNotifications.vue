@@ -1,28 +1,23 @@
 <script setup>
 import { ref, onMounted } from "vue";
-
-import { globalEmitter } from "../globals";
+import { appWindow } from "@tauri-apps/api/window";
 
 const notifications = ref([]);
 
-function removeNotification() {
-  setTimeout(() => {
-    notifications.value.splice(0, 1);
-  }, 5500);
-}
-
-onMounted(() => {
-  globalEmitter.on("instant-notification-add", (item) => {
-    notifications.value.push(item);
-    removeNotification();
+onMounted(async () => {
+  await appWindow.listen("instant-notification-add", (e) => {
+    notifications.value.push(e.payload);
+    setTimeout(() => {
+      notifications.value.splice(0, 1);
+    }, 5500);
   });
 });
 </script>
 
 <template>
   <div class="column">
-    <div class="row" v-for="(item, index) in notifications" :key="index" :class="{ info: item.type === 'Info', error: item.type === 'Error' }">
-      <p>{{ item.msg }}</p>
+    <div class="row" v-for="(notification, i) in notifications" :key="i" :class="{ info: notification.type === 'Info', error: notification.type === 'Error' }">
+      <p>{{ notification.msg }}</p>
     </div>
   </div>
 </template>
