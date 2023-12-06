@@ -34,6 +34,7 @@ pub fn set_vorbis_tags(tags: &DzrsTrackObjectTags, vorbis: &mut VorbisComments) 
     vorbis.insert("BARCODE".to_string(), tags.barcode);
     vorbis.insert("ISRC".to_string(), tags.isrc);
     vorbis.insert("BPM".to_string(), tags.bpm);
+    vorbis.insert("ITUNESADVISORY".to_string(), tags.explicit);
     vorbis.insert("REPLAYGAIN_ALBUM_GAIN".to_string(), tags.replaygain_album_gain);
     vorbis.insert("REPLAYGAIN_ALBUM_PEAK".to_string(), tags.replaygain_album_peak);
     vorbis.insert("REPLAYGAIN_TRACK_GAIN".to_string(), tags.replaygain_track_gain);
@@ -88,6 +89,7 @@ pub struct DzrsTrackObjectTags {
     pub performer: String,
     pub producer: String,
     pub genre: String,
+    pub length: String,
     pub lyrics: String,
     pub copyright: String,
     pub description: String,
@@ -103,6 +105,7 @@ pub struct DzrsTrackObjectTags {
     pub barcode: String,
     pub isrc: String,
     pub bpm: String,
+    pub explicit: String,
     pub replaygain_album_gain: String,
     pub replaygain_album_peak: String,
     pub replaygain_track_gain: String,
@@ -289,6 +292,7 @@ impl DzrsTrackObjectTags {
                 "YEAR" => t.year = tag.1.to_string(),
                 "ISRC" => t.isrc = tag.1.to_string(),
                 "BPM" => t.bpm = tag.1.to_string(),
+                "ITUNESADVISORY" => t.explicit = tag.1.to_string(),
                 "REPLAYGAIN_ALBUM_GAIN" => t.replaygain_album_gain = tag.1.to_string(),
                 "REPLAYGAIN_ALBUM_PEAK" => t.replaygain_album_peak = tag.1.to_string(),
                 "REPLAYGAIN_TRACK_GAIN" => t.replaygain_track_gain = tag.1.to_string(),
@@ -353,6 +357,13 @@ impl DzrsTrackObjectTags {
                 if t.bpm != 0.0 {
                     self.bpm = t.bpm.to_string();
                 };
+            };
+            if conf.tag_dz_explicit {
+                self.explicit = match t.explicit_lyrics {
+                    true => "1",
+                    false => "0",
+                }
+                .into();
             };
             if conf.tag_dz_replaygain_track_gain {
                 if t.gain != 0.0 {

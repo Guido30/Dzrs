@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onBeforeMount, toRef } from "vue";
+import { ref, computed, onBeforeMount } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
@@ -12,7 +12,7 @@ import HeaderBar from "../components/HeaderBar.vue";
 import { appConfig, filterColumnsDirView, defaultDzrsTrackObject } from "../globals";
 
 // Track objects
-const dzrsTrackObjects = ref([{}]);
+const dzrsTrackObjects = ref([]);
 const activeDzrsTrackObject = computed(() => {
   let activeTrack = defaultDzrsTrackObject;
   if (selectedFilePaths.value.length >= 1) {
@@ -283,7 +283,7 @@ onBeforeMount(async () => {
             </thead>
             <tbody v-show="!tracksIsLoading">
               <template v-for="file in dzrsTrackObjects" :key="file.filePath">
-                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath) }">
+                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath), 'greyed-file': file.fileExtension !== 'flac' }">
                   <td>
                     <IconPointFilled v-if="!isEqual(file.tags, file.tagsToSave)" />
                   </td>
@@ -492,6 +492,19 @@ onBeforeMount(async () => {
                     </div>
                   </td>
                 </tr>
+                <tr :set="(len = `${Math.floor(activeDzrsTrackObject.tags.length / 60)}:${(activeDzrsTrackObject.tags.length % 60).toString().padStart(2, '0')}`)">
+                  <th>Length</th>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="len" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="len" readonly></textarea>
+                    </div>
+                  </td>
+                </tr>
                 <tr style="height: 300px">
                   <th>Lyrics</th>
                   <td>
@@ -684,6 +697,19 @@ onBeforeMount(async () => {
                   <td>
                     <div>
                       <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.bpm !== activeDzrsTrackObject.tags.bpm }" v-model="activeDzrsTrackObject.tagsToSave.bpm"></textarea>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Parental Advisory</th>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.explicit" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.explicit !== activeDzrsTrackObject.tags.explicit }" v-model="activeDzrsTrackObject.tagsToSave.explicit"></textarea>
                     </div>
                   </td>
                 </tr>
@@ -884,6 +910,10 @@ p {
 .tags-panel tbody tr:hover,
 .selected-file {
   background-color: var(--color-hover);
+}
+
+.greyed-file {
+  color: #b8b8b8;
 }
 
 .table-header {

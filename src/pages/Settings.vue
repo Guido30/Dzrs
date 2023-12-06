@@ -172,12 +172,12 @@ async function setLocalFilesPath() {
                   <input @input="(e) => updateConfig('tag_dz_original_date', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzOriginalDate" />
                   <span>Original Date</span>
                 </div>
-              </div>
-              <div class="column" style="justify-content: flex-start; align-self: flex-start">
                 <div class="row">
                   <input @input="(e) => updateConfig('tag_dz_itunesadvisory', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzItunesadvisory" />
                   <span>Explicit Lyrics</span>
                 </div>
+              </div>
+              <div class="column" style="justify-content: flex-start; align-self: flex-start">
                 <div class="row">
                   <input @input="(e) => updateConfig('tag_dz_isrc', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzIsrc" />
                   <span>ISRC</span>
@@ -193,6 +193,10 @@ async function setLocalFilesPath() {
                 <div class="row">
                   <input @input="(e) => updateConfig('tag_dz_bpm', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzBpm" />
                   <span>BPM</span>
+                </div>
+                <div class="row">
+                  <input @input="(e) => updateConfig('tag_dz_explicit', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzExplicit" />
+                  <span>Parental Advisory Rating</span>
                 </div>
                 <div class="row">
                   <input @input="(e) => updateConfig('tag_dz_replaygain_track_gain', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzReplaygainTrackGain" />

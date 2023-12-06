@@ -221,7 +221,11 @@ impl DzrsTrackObject {
             .map(|p| DzrsTrackObjectPicture::new(p))
             .collect();
         let vorbis = flac.vorbis_comments().unwrap();
-        let tags = DzrsTrackObjectTags::new(vorbis, config);
+        let mut tags = DzrsTrackObjectTags::new(vorbis, config);
+
+        // Set the length read from the flac properties, readonly tag!
+        let properties = flac.properties();
+        tags.length = properties.duration().as_secs().to_string();
 
         self.tags = tags.clone();
         self.tags_pictures = pictures;
