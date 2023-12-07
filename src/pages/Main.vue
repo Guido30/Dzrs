@@ -172,11 +172,24 @@ async function fetchDzrsTrackObjects() {
 
 // Replace tags of a track by fetching another deezer payload for a given track_id
 // Called when applying a source for a specific track
-async function fetchTagFromSource(id) {
+async function fetchTrackTagsFromSource(id) {
   tagsIsFetchingOrSaving.value = true;
-  await invoke("tracks_source", { path: activeDzrsTrackObject.value.filePath, id: id }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTagFromSource", msg: err }));
+  await invoke("tracks_source", { path: activeDzrsTrackObject.value.filePath, id: id }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTrackTagsFromSource", msg: err }));
   await getDzrsTrackObjects([activeDzrsTrackObject.value.filePath]);
   tagsIsFetchingOrSaving.value = false;
+}
+
+async function fetchTrackSources() {
+  tagsIsFetchingOrSaving.value = true;
+  await invoke("tracks_fetch_sources", { path: activeDzrsTrackObject.value.filePath }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTrackSources", msg: err }));
+  await getDzrsTrackObjects([activeDzrsTrackObject.value.filePath]);
+  tagsIsFetchingOrSaving.value = false;
+}
+
+// Reload tags in the tags_to_save field for the active track to match the ones currently saved in the file
+async function reloadTagsFromFile() {
+  await invoke("tracks_reload", { path: activeDzrsTrackObject.value.filePath }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "restoreTagsFromFile", msg: err }));
+  await getDzrsTrackObjects([activeDzrsTrackObject.value.filePath]);
 }
 
 // Saves edited files based on selection or all of them if no selection was made, then retrieves the new track objects from backend
@@ -318,9 +331,9 @@ onBeforeMount(async () => {
       <div class="source-panel frame">
         <div class="column" style="height: 100px; flex-grow: 1; justify-content: start">
           <div class="row sources-header" style="margin-bottom: 2px; border-bottom: 1px solid var(--color-bg-2)">
-            <IconTag v-tooltip="'Fetch Sources'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" />
+            <IconTag v-tooltip="'Fetch Sources'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" @click="fetchTrackSources" />
             <p style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px">Sources</p>
-            <IconRestore v-tooltip="'Restore Original Tags'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" />
+            <IconRestore v-tooltip="'Reload Original Tags'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" @click="reloadTagsFromFile" />
           </div>
           <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto; justify-content: start">
             <div v-for="(source, i) in activeDzrsTrackObject.tagsSources" :key="i" class="row sources-item" style="border: 1px solid var(--color); padding: 5px">
@@ -338,7 +351,7 @@ onBeforeMount(async () => {
                       {{ source.title }}
                     </p>
                   </div>
-                  <IconCloudDownload class="icon icon-check clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" @click="fetchTagFromSource(source.id)" v-tooltip="'Apply'" style="margin-left: 5px" />
+                  <IconCloudDownload class="icon icon-check clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" @click="fetchTrackTagsFromSource(source.id)" v-tooltip="'Apply'" style="margin-left: 5px" />
                 </div>
                 <div class="row" style="overflow: hidden; justify-content: start">
                   <p>

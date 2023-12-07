@@ -229,9 +229,7 @@ impl DzrsTrackObject {
 
         self.tags = tags.clone();
         self.tags_pictures = pictures;
-        if self.tags_to_save == DzrsTrackObjectTags::default() {
-            self.tags_to_save = tags;
-        }
+        self.tags_to_save = tags;
         Ok(())
     }
 }

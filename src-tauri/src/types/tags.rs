@@ -146,107 +146,50 @@ impl DeezerTagger {
     }
 
     // Call deezer and get a structured payload back based on the given track metadata, errors
-    // on request fail or no tracks are found
+    // errors on request fail or if no tracks are found
     pub async fn fetch_by_query(
         &self,
         query: &str,
     ) -> Result<(DeezerStructuredPayload, Vec<DzrsTrackObjectTagSource>), String> {
-        // Build the query from the provided metadata and send the request
-        let res = match self.client.search(&query, true).await {
-            Ok(p) => p,
-            Err(err) => {
-                println!("{:?}", err);
-                return Err(format!("{:?}", err));
-            }
-        };
+        let res = self
+            .client
+            .search(&query, true)
+            .await
+            .map_err(|err| format!("{:?}", err))?;
 
         // Build the possible sources payload
-        let sources = res.iter().map(|tr| DzrsTrackObjectTagSource::new(tr)).collect();
+        let sources = res.iter().map(DzrsTrackObjectTagSource::new).collect();
+
+        // Get the track id
+        let t_id = res
+            .first()
+            .ok_or_else(|| format!("No tracks found on deezer for query {}", query))?;
 
         // Build the main track payload if present
-        let t_id = res.first().map(|i| i.id);
-        let payload = match t_id {
-            Some(t_id) => {
-                let mut album_id: Option<u64> = None;
-                let track: Option<deezer_api::MainTrack> = match self.client.track(t_id).await {
-                    Ok(t) => {
-                        album_id = Some(t.album.id);
-                        Some(t)
-                    }
-                    Err(_) => None,
-                };
-                let gw_track: Option<deezer_gw::Song> = match self.client.gw_song(t_id).await {
-                    Ok(s) => Some(s),
-                    Err(_) => None,
-                };
-                let lyrics: Option<deezer_gw::Lyrics> = match self.client.gw_lyrics(t_id).await {
-                    Ok(l) => Some(l),
-                    Err(_) => None,
-                };
-                let mut album: Option<deezer_api::MainAlbum> = None;
-                let mut gw_album: Option<deezer_gw::Album> = None;
-                match album_id {
-                    Some(album_id) => {
-                        if let Ok(a) = self.client.album(album_id).await {
-                            album = Some(a);
-                        };
-                        if let Ok(a) = self.client.gw_album(album_id).await {
-                            gw_album = Some(a);
-                        };
-                    }
-                    None => {
-                        album = None;
-                        gw_album = None;
-                    }
-                };
-                DeezerStructuredPayload {
-                    track,
-                    gw_track,
-                    album,
-                    gw_album,
-                    lyrics,
-                }
-            }
-            None => return Err(format!("No tracks found on deezer for query {}", query)),
-        };
+        let payload = self.fetch_by_id(t_id.id).await;
 
         Ok((payload, sources))
     }
 
     // Call deezer and get a structured payload back based on the given track id
     pub async fn fetch_by_id(&self, track_id: u64) -> DeezerStructuredPayload {
-        let mut album_id: Option<u64> = None;
-        let track: Option<deezer_api::MainTrack> = match self.client.track(track_id).await {
-            Ok(t) => {
-                album_id = Some(t.album.id);
-                Some(t)
-            }
-            Err(_) => None,
-        };
-        let gw_track: Option<deezer_gw::Song> = match self.client.gw_song(track_id).await {
-            Ok(s) => Some(s),
-            Err(_) => None,
-        };
-        let lyrics: Option<deezer_gw::Lyrics> = match self.client.gw_lyrics(track_id).await {
-            Ok(l) => Some(l),
-            Err(_) => None,
-        };
-        let mut album: Option<deezer_api::MainAlbum> = None;
-        let mut gw_album: Option<deezer_gw::Album> = None;
-        match album_id {
-            Some(album_id) => {
-                if let Ok(a) = self.client.album(album_id).await {
-                    album = Some(a);
-                };
-                if let Ok(a) = self.client.gw_album(album_id).await {
-                    gw_album = Some(a);
-                };
-            }
-            None => {
-                album = None;
-                gw_album = None;
-            }
-        };
+        let fut_track = self.client.track(track_id);
+        let fut_gw_track = self.client.gw_song(track_id);
+        let fut_lyrics = self.client.gw_lyrics(track_id);
+
+        let track = fut_track.await.ok();
+        let album_id = track.as_ref().map(|tr| tr.album.id);
+
+        let (mut album, mut gw_album) = (None, None);
+        if let Some(a_id) = album_id {
+            let fut_album = self.client.album(a_id);
+            let fut_gw_album = self.client.gw_album(a_id);
+
+            let (_album, _gw_album) = futures::join!(fut_album, fut_gw_album);
+            (album, gw_album) = (_album.ok(), _gw_album.ok())
+        }
+        let (gw_track, lyrics) = futures::join!(fut_gw_track, fut_lyrics);
+        let (gw_track, lyrics) = (gw_track.ok(), lyrics.ok());
         DeezerStructuredPayload {
             track,
             gw_track,
@@ -254,6 +197,19 @@ impl DeezerTagger {
             gw_album,
             lyrics,
         }
+    }
+
+    // Call deezer and get all possible matching tracks based on the given track metadata
+    // errors on request fail or if no tracks are found
+    pub async fn fetch_sources(&self, query: &str) -> Result<Vec<DzrsTrackObjectTagSource>, String> {
+        let res = self
+            .client
+            .search(&query, true)
+            .await
+            .map_err(|err| format!("{:?}", err))?;
+
+        // Build the possible sources payload
+        Ok(res.iter().map(DzrsTrackObjectTagSource::new).collect())
     }
 }
 

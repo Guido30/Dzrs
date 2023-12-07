@@ -144,9 +144,9 @@ async fn tracks_get(
 async fn tracks_get_dir(
     dir: Option<String>,
     tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
+    config: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<Vec<DzrsTrackObject>, String> {
-    let conf = configuration.lock().unwrap().parsed();
+    let conf = config.lock().unwrap().parsed();
     let mut t = tracks.lock().unwrap();
     let dir = match dir {
         Some(p) => p,
@@ -155,9 +155,8 @@ async fn tracks_get_dir(
     match DzrsTrackObjectWrapper::new(dir) {
         Ok(mut tr) => {
             tr.iter_mut().for_each(|track| {
-                if track.file_extension == "flac" {
-                    let _ = track.load_tags(&conf);
-                }
+                // Try loading tags, error is ignored for non-flac
+                let _ = track.load_tags(&conf);
             });
             *t = tr.clone();
             Ok(tr.items)
@@ -254,6 +253,47 @@ async fn tracks_fetch(
     }
 }
 
+// Fetch possibile tracks matching the query (source) from deezer and apply them into the inner DzrsTrackObject
+#[tauri::command]
+async fn tracks_fetch_sources(
+    path: String,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    tagger: State<'_, DeezerTagger>,
+    config: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), String> {
+    let t = tracks.lock().unwrap().clone();
+    let conf = config.lock().unwrap().parsed();
+
+    match t.get_track_obj(&path) {
+        Some(tr) => {
+            // Fetch sources from deezer using the track metadata
+            let mut tr = tr.to_owned();
+            let tr_meta = (tr.tags.title.deref(), tr.tags.album.deref(), tr.tags.artist.deref());
+            let query = match (
+                tr_meta.0.is_empty() && tr_meta.1.is_empty() && tr_meta.2.is_empty(),
+                conf.tag_fetch_with_filename,
+            ) {
+                (true, true) => tr.file_name.clone().strip_suffix(".flac").unwrap().into(),
+                _ => format!(r#"track:"{}" album:"{}" artist:"{}""#, tr_meta.0, tr_meta.1, tr_meta.2),
+            };
+            let sources = tagger.fetch_sources(&query).await;
+            // Update the DzrsTrackObject with the fetched sources
+            match sources {
+                Ok(sources) => {
+                    tr.tags_sources = sources;
+                    tracks.lock().unwrap().replace_track_obj(tr).unwrap();
+                }
+                Err(err) => {
+                    return Err(err);
+                }
+            };
+        }
+        _ => (),
+    };
+
+    Ok(())
+}
+
 // Fetch tags for a specific track_id and apply them into the inner DzrsTrackObjects for the given path
 // This command is used when applying a different deezer source over the file
 #[tauri::command]
@@ -276,6 +316,27 @@ async fn tracks_source(
             tr.tags_to_save.apply_deezer(payload, &conf);
             tr.tags_status = DzrsTrackObjectTagState::Matched;
             tracks.lock().unwrap().replace_track_obj(tr)?;
+        }
+        _ => (),
+    }
+
+    Ok(())
+}
+
+// Reload tags from file while keeping all other DzrsTrackObject properties unchanged
+#[tauri::command]
+async fn tracks_reload(
+    path: String,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    config: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), String> {
+    let mut t = tracks.lock().unwrap();
+    let conf = config.lock().unwrap().parsed();
+
+    match t.get_track_obj_mut(&path) {
+        Some(tr) => {
+            tr.load_tags(&conf)?;
+            tr.tags_status = DzrsTrackObjectTagState::Finalized;
         }
         _ => (),
     }
@@ -445,7 +506,9 @@ fn main() {
             config_get,
             config_set,
             tracks_fetch,
+            tracks_fetch_sources,
             tracks_source,
+            tracks_reload,
             save_tags,
             get_slavart_tracks,
             download_track,
