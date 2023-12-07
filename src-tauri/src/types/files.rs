@@ -37,7 +37,7 @@ pub enum DzrsTrackObjectTagState {
     #[default]
     NotFetched,
     Unsuccessfull,
-    Successfull, // Currently unused, when fetched and a track is found, it will always be matched
+    Successfull, // When multiple tracks are returned from the query, user has to ensure the matched track (first one in response) actually matches the file
     Matched,
     Finalized,
 }

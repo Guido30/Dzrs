@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -50,6 +50,7 @@ pub struct DzrsConfiguration {
     pub tag_dz_year: String,
     pub tag_dz_original_date: String,
     pub tag_dz_label: String,
+    pub tag_dz_organization: String,
     pub tag_dz_barcode: String,
     pub tag_dz_isrc: String,
     pub tag_dz_bpm: String,
@@ -57,6 +58,7 @@ pub struct DzrsConfiguration {
     pub tag_dz_replaygain_track_gain: String,
     pub tag_dz_source_id: String,
     pub tag_prefer_sync_lyrics: String,
+    pub tag_fetch_with_filename: String,
     pub tag_date_as_year: String,
     pub tag_originaldate_as_year: String,
 }
@@ -103,6 +105,7 @@ pub struct DzrsConfigurationParsed {
     pub tag_dz_year: bool,
     pub tag_dz_original_date: bool,
     pub tag_dz_label: bool,
+    pub tag_dz_organization: bool,
     pub tag_dz_barcode: bool,
     pub tag_dz_isrc: bool,
     pub tag_dz_bpm: bool,
@@ -110,6 +113,7 @@ pub struct DzrsConfigurationParsed {
     pub tag_dz_replaygain_track_gain: bool,
     pub tag_dz_source_id: bool,
     pub tag_prefer_sync_lyrics: bool,
+    pub tag_fetch_with_filename: bool,
     pub tag_date_as_year: bool,
     pub tag_originaldate_as_year: bool,
 }
@@ -184,6 +188,7 @@ impl DzrsConfiguration {
             "tag_dz_year" => self.tag_dz_date = value,
             "tag_dz_original_date" => self.tag_dz_original_date = value,
             "tag_dz_label" => self.tag_dz_label = value,
+            "tag_dz_organization" => self.tag_dz_organization = value,
             "tag_dz_barcode" => self.tag_dz_barcode = value,
             "tag_dz_isrc" => self.tag_dz_isrc = value,
             "tag_dz_bpm" => self.tag_dz_bpm = value,
@@ -191,6 +196,7 @@ impl DzrsConfiguration {
             "tag_dz_replaygain_track_gain" => self.tag_dz_replaygain_track_gain = value,
             "tag_dz_source_id" => self.tag_dz_source_id = value,
             "tag_prefer_sync_lyrics" => self.tag_prefer_sync_lyrics = value,
+            "tag_fetch_with_filename" => self.tag_fetch_with_filename = value,
             "tag_date_as_year" => self.tag_date_as_year = value,
             "tag_originaldate_as_year" => self.tag_originaldate_as_year = value,
             _ => (),
@@ -246,6 +252,7 @@ impl DzrsConfiguration {
             tag_dz_year: self.tag_dz_year.parse().unwrap_or(true),
             tag_dz_original_date: self.tag_dz_original_date.parse().unwrap_or(true),
             tag_dz_label: self.tag_dz_label.parse().unwrap_or(true),
+            tag_dz_organization: self.tag_dz_organization.parse().unwrap_or(true),
             tag_dz_barcode: self.tag_dz_barcode.parse().unwrap_or(true),
             tag_dz_isrc: self.tag_dz_isrc.parse().unwrap_or(true),
             tag_dz_bpm: self.tag_dz_bpm.parse().unwrap_or(true),
@@ -253,6 +260,7 @@ impl DzrsConfiguration {
             tag_dz_replaygain_track_gain: self.tag_dz_replaygain_track_gain.parse().unwrap_or(true),
             tag_dz_source_id: self.tag_dz_source_id.parse().unwrap_or(true),
             tag_prefer_sync_lyrics: self.tag_prefer_sync_lyrics.parse().unwrap_or(true),
+            tag_fetch_with_filename: self.tag_fetch_with_filename.parse().unwrap_or(true),
             tag_date_as_year: self.tag_date_as_year.parse().unwrap_or(true),
             tag_originaldate_as_year: self.tag_originaldate_as_year.parse().unwrap_or(true),
         }
@@ -302,6 +310,7 @@ impl Default for DzrsConfiguration {
             tag_dz_year: "true".into(),
             tag_dz_original_date: "true".into(),
             tag_dz_label: "true".into(),
+            tag_dz_organization: "true".into(),
             tag_dz_barcode: "true".into(),
             tag_dz_isrc: "true".into(),
             tag_dz_bpm: "true".into(),
@@ -309,6 +318,7 @@ impl Default for DzrsConfiguration {
             tag_dz_replaygain_track_gain: "true".into(),
             tag_dz_source_id: "true".into(),
             tag_prefer_sync_lyrics: "true".into(),
+            tag_fetch_with_filename: "true".into(),
             tag_date_as_year: "true".into(),
             tag_originaldate_as_year: "true".into(),
         }

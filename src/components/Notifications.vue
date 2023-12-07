@@ -35,14 +35,14 @@ watch(notificationsCount, async () => {
         <div class="notification" v-for="(item, index) in notifications" :key="index" :class="{ info: item.type === 'Info', error: item.type === 'Error' }">
           <div class="row" style="justify-content: start">
             <span class="notification-header">From {{ item.origin }}</span>
-            <IconX class="icon icon-x" size="20" color="var(--color-text)" @click="notifications.splice(i, 1)" />
+            <IconX class="icon icon-x" size="20" @click="notifications.splice(i, 1)" />
           </div>
           <p style="overflow-wrap: break-word">{{ item.msg }}</p>
         </div>
       </div>
     </div>
     <div class="row notifications-footer">
-      <IconTrash v-tooltip="'Clear Notifications'" size="30" class="icon icon-trash" @click="notifications = []" />
+      <IconTrash v-tooltip="'Clear Notifications'" size="30" class="icon icon-trash clickable-effect" @click="notifications = []" />
     </div>
   </div>
 </template>

@@ -8,15 +8,15 @@
   },
   "package": {
     "productName": "Dzrs",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "tauri": {
     "windows": [
       {
         "label": "main",
         "visible": false,
-        "width": 1200,
-        "height": 1000,
+        "width": 1180,
+        "height": 950,
         "minWidth": 1000,
         "minHeight": 800,
         "title": "Dzrs"

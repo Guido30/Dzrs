@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
 import { isEqual, remove as loRemove } from "lodash";
-import { IconExternalLink, IconCircleCheck, IconPointFilled, IconLoader2, IconFolder, IconClipboardList, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
+import { IconExternalLink, IconCloudDownload, IconPointFilled, IconLoader2, IconFolder, IconTagStarred, IconTag, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
 import TableFilter from "../components/TableFilter.vue";
 import HeaderBar from "../components/HeaderBar.vue";
@@ -170,6 +170,15 @@ async function fetchDzrsTrackObjects() {
   tagsIsFetchingOrSaving.value = false;
 }
 
+// Replace tags of a track by fetching another deezer payload for a given track_id
+// Called when applying a source for a specific track
+async function fetchTagFromSource(id) {
+  tagsIsFetchingOrSaving.value = true;
+  await invoke("tracks_source", { path: activeDzrsTrackObject.value.filePath, id: id }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTagFromSource", msg: err }));
+  await getDzrsTrackObjects([activeDzrsTrackObject.value.filePath]);
+  tagsIsFetchingOrSaving.value = false;
+}
+
 // Saves edited files based on selection or all of them if no selection was made, then retrieves the new track objects from backend
 async function saveModifiedTracks() {
   const confirmation = await confirm("Save modified files?", { title: "Save", type: "warning" });
@@ -187,12 +196,6 @@ async function saveModifiedTracks() {
       await getDzrsTrackObjects(modifiedTracks.map((t) => t.filePath));
     }
   }
-}
-
-// TODO
-async function fetchTagFromSource() {
-  tagsIsFetchingOrSaving.value = true;
-  tagsIsFetchingOrSaving.value = false;
 }
 
 // Starts listening to the file watcher initialized in the backend
@@ -234,8 +237,8 @@ onBeforeMount(async () => {
   <HeaderBar>
     <div class="row header-content">
       <button style="padding: 2px 8px" @click="changeFilesDir">
-        <div class="row" style="color: var(--color-text)">
-          <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-right: 3px" />
+        <div class="row clickable-effect" style="color: var(--color-text)">
+          <IconFolder size="20" class="icon" style="margin-right: 3px" />
           <span>Open</span>
         </div>
       </button>
@@ -245,22 +248,22 @@ onBeforeMount(async () => {
         </p>
       </div>
       <button style="padding: 2px 8px" @click="invoke('browse_cmd', { path: appConfig.directoryViewPath })" v-show="appConfig.directoryViewPath">
-        <div class="row" style="color: var(--color-text)">
+        <div class="row clickable-effect" style="color: var(--color-text)">
           <span>Browse</span>
-          <IconFolder size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
+          <IconFolder size="20" class="icon" style="margin-left: 3px" />
         </div>
       </button>
       <button style="padding: 2px 8px" @click="fetchDzrsTrackObjects" :disabled="tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
-        <div class="row" style="color: var(--color-text)" v-tooltip.bottom="{ content: 'Retrieve Deezer Tags' }">
+        <div class="row clickable-effect" style="color: var(--color-text)" v-tooltip.bottom="'Retrieve Deezer Tags'">
           <span>Fetch</span>
-          <IconClipboardList v-if="!tagsIsFetchingOrSaving" size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
-          <IconLoader2 v-else size="20" color="var(--color-text)" class="icon icon-loading" style="margin-left: 3px" />
+          <IconTagStarred v-if="!tagsIsFetchingOrSaving" size="20" class="icon" style="margin-left: 3px" />
+          <IconLoader2 v-else size="20" class="icon icon-loading" style="margin-left: 3px" />
         </div>
       </button>
       <button style="padding: 2px 8px" @click="saveModifiedTracks" :disabled="!tagsNeedSave || tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
-        <div class="row" style="color: var(--color-text)">
+        <div class="row clickable-effect" style="color: var(--color-text)">
           <span>Save</span>
-          <IconDeviceFloppy size="20" color="var(--color-text)" class="icon" style="margin-left: 3px" />
+          <IconDeviceFloppy size="20" class="icon" style="margin-left: 3px" />
         </div>
       </button>
     </div>
@@ -315,8 +318,9 @@ onBeforeMount(async () => {
       <div class="source-panel frame">
         <div class="column" style="height: 100px; flex-grow: 1; justify-content: start">
           <div class="row sources-header" style="margin-bottom: 2px; border-bottom: 1px solid var(--color-bg-2)">
+            <IconTag v-tooltip="'Fetch Sources'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" />
             <p style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px">Sources</p>
-            <IconRestore v-tooltip="'Restore Original Tags'" size="25" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" />
+            <IconRestore v-tooltip="'Restore Original Tags'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" />
           </div>
           <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto; justify-content: start">
             <div v-for="(source, i) in activeDzrsTrackObject.tagsSources" :key="i" class="row sources-item" style="border: 1px solid var(--color); padding: 5px">
@@ -327,32 +331,33 @@ onBeforeMount(async () => {
                 </div>
               </a>
               <div class="column sources-item-text-col" style="flex-grow: 1; text-align: left">
-                <div class="row" style="max-width: 50px; justify-content: start">
-                  <p>
-                    <span class="sources-item-text-head">Title:</span>
-                    {{ source.title }}
-                  </p>
+                <div class="row">
+                  <div class="row" style="overflow: hidden; justify-content: start; flex-grow: 1">
+                    <p>
+                      <span class="sources-item-text-head">Title:</span>
+                      {{ source.title }}
+                    </p>
+                  </div>
+                  <IconCloudDownload class="icon icon-check clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" @click="fetchTagFromSource(source.id)" v-tooltip="'Apply'" style="margin-left: 5px" />
                 </div>
-                <div class="row" style="max-width: 50px; justify-content: start">
+                <div class="row" style="overflow: hidden; justify-content: start">
                   <p>
                     <span class="sources-item-text-head">Album:</span>
                     {{ source.album }}
                   </p>
                 </div>
-                <div class="row" style="max-width: 50px; justify-content: start">
-                  <p>
-                    <span class="sources-item-text-head">Artist:</span>
-                    {{ source.artist }}
+                <div class="row">
+                  <div class="row" style="overflow: hidden; justify-content: start; flex-grow: 1">
+                    <p>
+                      <span class="sources-item-text-head">Artist:</span>
+                      {{ source.artist }}
+                    </p>
+                  </div>
+                  <p style="text-align: right; max-width: fit-content">
+                    <span>Length:</span>
+                    {{ `${Math.floor(source.duration / 60)}:${(source.duration % 60).toString().padStart(2, "0")}` }}
                   </p>
                 </div>
-              </div>
-              <div class="column sources-item-text-col" style="align-items: flex-end">
-                <IconCircleCheck size="25" class="icon icon-check" v-tooltip="'Apply'" @click="fetchTagFromSource" />
-                <p style="opacity: 0%; flex-grow: 0">EMPTY</p>
-                <p style="flex-grow: 0; text-align: right">
-                  <span>Length:</span>
-                  {{ `${Math.floor(source.duration / 60)}:${(source.duration % 60).toString().padStart(2, "0")}` }}
-                </p>
               </div>
             </div>
           </div>
@@ -658,6 +663,19 @@ onBeforeMount(async () => {
                   <td>
                     <div>
                       <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.label !== activeDzrsTrackObject.tags.label }" v-model="activeDzrsTrackObject.tagsToSave.label"></textarea>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Organization</th>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" v-model="activeDzrsTrackObject.tags.organization" readonly></textarea>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <textarea spellcheck="false" type="text" :class="{ 'tag-accent-text': activeDzrsTrackObject.tagsToSave.organization !== activeDzrsTrackObject.tags.organization }" v-model="activeDzrsTrackObject.tagsToSave.organization"></textarea>
                     </div>
                   </td>
                 </tr>
@@ -997,7 +1015,6 @@ p {
 }
 
 .sources-item .icon-check {
-  padding-left: 5px;
   opacity: 0%;
   transition: opacity 0.2s ease;
 }
@@ -1070,6 +1087,7 @@ p {
 }
 
 .sources-item p {
+  max-width: 10px;
   padding-left: 15px;
   flex-grow: 1;
   margin-top: 0px;

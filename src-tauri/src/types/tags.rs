@@ -31,6 +31,7 @@ pub fn set_vorbis_tags(tags: &DzrsTrackObjectTags, vorbis: &mut VorbisComments) 
     vorbis.insert("YEAR".to_string(), tags.year);
     vorbis.insert("ORIGINALDATE".to_string(), tags.original_date);
     vorbis.insert("LABEL".to_string(), tags.label);
+    vorbis.insert("ORGANIZATION".to_string(), tags.organization);
     vorbis.insert("BARCODE".to_string(), tags.barcode);
     vorbis.insert("ISRC".to_string(), tags.isrc);
     vorbis.insert("BPM".to_string(), tags.bpm);
@@ -102,6 +103,7 @@ pub struct DzrsTrackObjectTags {
     pub original_date: String,
     pub comment: String,
     pub label: String,
+    pub organization: String,
     pub barcode: String,
     pub isrc: String,
     pub bpm: String,
@@ -147,15 +149,15 @@ impl DeezerTagger {
     // on request fail or no tracks are found
     pub async fn fetch_by_query(
         &self,
-        title_q: &str,
-        album_q: &str,
-        artist_q: &str,
+        query: &str,
     ) -> Result<(DeezerStructuredPayload, Vec<DzrsTrackObjectTagSource>), String> {
         // Build the query from the provided metadata and send the request
-        let query = format!(r#"track:"{}" album:"{}" artist:"{}""#, title_q, album_q, artist_q);
         let res = match self.client.search(&query, true).await {
             Ok(p) => p,
-            Err(err) => return Err(format!("{:?}", err)),
+            Err(err) => {
+                println!("{:?}", err);
+                return Err(format!("{:?}", err));
+            }
         };
 
         // Build the possible sources payload
@@ -211,6 +213,7 @@ impl DeezerTagger {
         Ok((payload, sources))
     }
 
+    // Call deezer and get a structured payload back based on the given track id
     pub async fn fetch_by_id(&self, track_id: u64) -> DeezerStructuredPayload {
         let mut album_id: Option<u64> = None;
         let track: Option<deezer_api::MainTrack> = match self.client.track(track_id).await {
@@ -255,6 +258,7 @@ impl DeezerTagger {
 }
 
 impl DzrsTrackObjectTags {
+    // Maps a VorbisComments to a DzrsTrackObjectTags
     pub fn new(vorbis: &VorbisComments, config: &DzrsConfigurationParsed) -> Self {
         let sep = &config.tag_separator;
         let mut t = Self::default();
@@ -263,6 +267,7 @@ impl DzrsTrackObjectTags {
         let mut performers: Vec<String> = Vec::new();
         let mut producers: Vec<String> = Vec::new();
         let mut labels: Vec<String> = Vec::new();
+        let mut organizations: Vec<String> = Vec::new();
         let mut extra_tags: Vec<(String, String)> = Vec::new();
         let v = vorbis.items();
         for tag in v {
@@ -289,6 +294,7 @@ impl DzrsTrackObjectTags {
                 "DATE" => t.date = tag.1.to_string(),
                 "ORIGINALDATE" => t.original_date = tag.1.to_string(),
                 "LABEL" => labels.push(tag.1.to_string()),
+                "ORGANIZATION" => organizations.push(tag.1.to_string()),
                 "YEAR" => t.year = tag.1.to_string(),
                 "ISRC" => t.isrc = tag.1.to_string(),
                 "BPM" => t.bpm = tag.1.to_string(),
@@ -307,6 +313,7 @@ impl DzrsTrackObjectTags {
         t.performer = performers.join(sep);
         t.producer = producers.join(sep);
         t.label = labels.join(sep);
+        t.organization = organizations.join(sep);
         t.extra_tags = extra_tags;
         t
     }
@@ -444,7 +451,10 @@ impl DzrsTrackObjectTags {
                 self.genre = genres.join(&conf.tag_separator);
             };
             if conf.tag_dz_label {
-                self.label = a.label;
+                self.label = a.label.clone();
+            }
+            if conf.tag_dz_organization {
+                self.organization = a.label
             }
             if conf.tag_dz_barcode {
                 self.barcode = a.upc;

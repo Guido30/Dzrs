@@ -197,7 +197,8 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+.disabled-icon {
   cursor: not-allowed;
   opacity: 0.7;
   pointer-events: none;
@@ -205,6 +206,15 @@ button:disabled {
 
 .icon-loading {
   animation: icon-loading-anim 1.8s linear infinite;
+}
+
+.clickable-effect {
+  transition: all 0.1s ease-in-out;
+}
+
+.clickable-effect:active {
+  color: var(--color-accent) !important;
+  transform: scale(0.92) !important;
 }
 
 .v-enter-active,

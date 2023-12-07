@@ -135,7 +135,7 @@ async function downloadTrack(tr) {
           <p>{{ queuedTrack.albumTitle }}</p>
           <div class="row">
             <p style="flex-grow: 1">{{ queuedTrack.artist }}</p>
-            <IconTrash class="icon icon-trash" style="cursor: pointer; margin-left: 5px" @click="queuedTracks.splice(i, 1)" />
+            <IconTrash class="icon icon-trash clickable-effect" style="cursor: pointer; margin-left: 5px" @click="queuedTracks.splice(i, 1)" />
             <IconLoader2 class="icon icon-loading" v-if="!queuedTrack.hasOwnProperty('status')" />
             <IconCircleCheck class="icon" color="var(--color-success)" v-else-if="queuedTrack.status" />
             <IconAlertCircle @click="queuedTrack.showStatusMessage = !queuedTrack.showStatusMessage" class="icon" style="cursor: pointer" color="var(--color-error)" v-else />
@@ -146,8 +146,8 @@ async function downloadTrack(tr) {
         </div>
       </div>
       <div class="row footer">
-        <IconFolder v-tooltip="'Open Downloads'" @click="invoke('browse_cmd', { path: appConfig.downloadPath })" size="30" style="cursor: pointer" class="icon" />
-        <IconTrash v-tooltip="'Clear Queue'" @click="queuedTracks = []" size="30" style="cursor: pointer" class="icon" />
+        <IconFolder v-tooltip="'Open Downloads'" @click="invoke('browse_cmd', { path: appConfig.downloadPath })" size="30" style="cursor: pointer" class="icon clickable-effect" />
+        <IconTrash v-tooltip="'Clear Queue'" @click="queuedTracks = []" size="30" style="cursor: pointer" class="icon clickable-effect" />
       </div>
     </div>
   </div>

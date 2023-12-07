@@ -27,8 +27,8 @@ onMounted(async () => {
         </div>
         <div class="column" style="align-items: start; padding-left: 40px">
           <a href="https://github.com/Guido30/Dzrs.git" target="_blank">
-            <div class="row">
-              <IconBrandGithub class="icon" size="40" color="var(--color-text)" />
+            <div class="row clickable-effect" style="color: var(--color-text) !important">
+              <IconBrandGithub class="icon" size="40" />
               <p style="padding-left: 10px; user-select: none">Github</p>
             </div>
           </a>

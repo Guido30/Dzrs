@@ -1,6 +1,6 @@
 [package]
 name = "dzrs"
-version = "0.1.0"
+version = "0.1.1"
 description = "Music Downloader and Tagger"
 authors = ["Guido30"]
 license = ""

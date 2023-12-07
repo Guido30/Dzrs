@@ -94,8 +94,8 @@ h1 {
   border-bottom-right-radius: 3px;
   gap: 5px;
   padding: 5px;
-  padding-left: 15px;
-  padding-right: 15px;
+  padding-left: 10px;
+  padding-right: 10px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease-in-out;

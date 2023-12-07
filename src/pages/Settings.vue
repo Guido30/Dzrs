@@ -39,10 +39,13 @@ async function saveFileTemplate() {
   appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
 }
 
+// Updates a single config entry in both backend and frontend, the underlying command will persist the change into the config file
 async function updateConfig(key, value) {
   await invoke("config_set", { key: key, value: value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "updateConfig", msg: err }));
+  appConfig[key] = value;
 }
 
+// Copies to the clipboard the clicked element's innerHTML
 async function copyEventTargetToClipboard(event) {
   await writeText(event.target.innerHTML).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "copyEventTargetToClipboard", msg: err }));
 }
@@ -74,7 +77,7 @@ async function setLocalFilesPath() {
           <div class="row">
             <input :value="downloadInputValue" type="text" placeholder="Open..." style="flex-grow: 1" />
             <button style="margin-left: 15px" @click="setDownloadPath">
-              <IconFolder color="var(--color-text)" />
+              <IconFolder class="icon clickable-effect" />
             </button>
           </div>
         </template>
@@ -89,12 +92,12 @@ async function setLocalFilesPath() {
           <div class="row">
             <input style="flex-grow: 1" type="text" spellcheck="false" placeholder="File name template..." :value="fileTemplateValue" ref="fileTemplateInput" />
             <button @click.prevent="saveFileTemplate" style="margin-left: 10px">
-              <IconCheck color="var(--color-text)" />
+              <IconCheck class="icon clickable-effect" />
             </button>
           </div>
           <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start; flex-wrap: wrap">
             <p>Available Variables:</p>
-            <p v-for="item in filterColumnsDownload" :key="item.id" v-tooltip="{ content: 'Copied!', triggers: ['click'], hideTriggers: ['hover'] }" @click="copyEventTargetToClipboard">
+            <p v-for="item in filterColumnsDownload" :key="item.id" class="clickable-effect" v-tooltip="{ content: 'Copied!', triggers: ['click'], hideTriggers: ['hover'] }" @click="copyEventTargetToClipboard">
               {{ `%${item.key}%` }}
             </p>
           </div>
@@ -110,7 +113,7 @@ async function setLocalFilesPath() {
           <div class="row">
             <input :value="localFilesInputValue" type="text" placeholder="Open..." style="flex-grow: 1" />
             <button style="margin-left: 15px" @click="setLocalFilesPath">
-              <IconFolder color="var(--color-text)" />
+              <IconFolder class="icon clickable-effect" />
             </button>
           </div>
         </template>
@@ -207,6 +210,10 @@ async function setLocalFilesPath() {
                   <span>Label</span>
                 </div>
                 <div class="row">
+                  <input @input="(e) => updateConfig('tag_dz_organization', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzOrganization" />
+                  <span>Organization</span>
+                </div>
+                <div class="row">
                   <input @input="(e) => updateConfig('tag_dz_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDzLyrics" />
                   <span>Lyrics</span>
                 </div>
@@ -259,6 +266,10 @@ async function setLocalFilesPath() {
             <div class="row" style="justify-content: flex-start; margin-top: 10px">
               <input @input="(e) => updateConfig('tag_prefer_sync_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPreferSyncLyrics" />
               <span style="margin-left: 8px">Prefer synchronized lyrics when available</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateConfig('tag_fetch_with_filename', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagFetchWithFilename" />
+              <span style="margin-left: 8px">Use filename for fetching when tags are missing</span>
             </div>
             <div class="row" style="justify-content: flex-start; margin-top: 10px">
               <input @input="(e) => updateConfig('tag_date_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDateAsYear" />
