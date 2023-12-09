@@ -16,8 +16,6 @@
 
 Head over to the [releases](https://github.com/Guido30/Dzrs/releases) page and download the installer.
 
-Linux support is not tested, tecnically it should work, but you would have build the executable yourself, which requires you to have knowledge of cargo and rust in general.
-
 ## Preview
 
 <p align="center">
@@ -35,4 +33,4 @@ So feel free to open an issue or fork the project it ever stops working.
 
 ## License
 
-This software is free to use. Refer to the [LICENSE](LICENSE.md) for more details.
+This software is free to use. Refer to the [LICENSE](LICENSE) for more details.
