@@ -1,5 +1,5 @@
 <script setup>
-import { IconFolder, IconFolderFilled, IconTextSize, IconCheck, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
+import { IconBrandDiscordFilled, IconFolder, IconFolderFilled, IconTextSize, IconCheck, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
 
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -13,10 +13,24 @@ import HeaderBar from "../components/HeaderBar.vue";
 
 import { appConfig, filterColumnsDownload, tagSeparators } from "../globals";
 
-const downloadInputValue = ref(appConfig.downloadPath);
 const fileTemplateInput = ref(null);
-const fileTemplateValue = ref(appConfig.fileTemplate);
-const localFilesInputValue = ref(appConfig.directoryViewPath);
+
+async function discordLogin() {
+  if (appConfig.discordStoreCredentials) {
+    await updateConfig("discord_email", appConfig.discordEmail);
+    await updateConfig("discord_password", appConfig.discordPassword);
+  }
+  if (appConfig.discordEmail && appConfig.discordPassword) {
+    const token = await invoke("discord_token", { email: appConfig.discordEmail, password: appConfig.discordPassword })
+      .then((t) => t)
+      .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "discordLogin", msg: err }));
+    if (token) {
+      appConfig.discordToken = token;
+      await updateConfig("discord_token", token);
+      await invoke("discord_authenticate", { token: token }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "Discord Login", msg: err }));
+    }
+  }
+}
 
 async function setDownloadPath() {
   const defaultPath = await downloadDir()
@@ -28,7 +42,6 @@ async function setDownloadPath() {
   if (path !== null) {
     await invoke("config_set", { key: "download_path", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
     appConfig.downloadPath = path;
-    downloadInputValue.value = path;
     appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   }
 }
@@ -57,7 +70,6 @@ async function setLocalFilesPath() {
   if (path !== null) {
     await invoke("config_set", { key: "directory_view_path", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setLocalFilesPath", msg: err }));
     appConfig.directoryViewPath = path;
-    localFilesInputValue.value = path;
     appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   }
 }
@@ -67,6 +79,51 @@ async function setLocalFilesPath() {
   <HeaderBar />
   <div class="container" style="overflow-y: auto">
     <div class="column">
+      <SettingsGroup :body-as-column="true" class="group-discord">
+        <template #head>
+          <IconBrandDiscordFilled size="30" class="icon setting-icon" />
+          <h1>Discord</h1>
+        </template>
+        <template #body>
+          <div class="column">
+            <p>Token</p>
+            <div class="row">
+              <input type="text" style="flex-grow: 1" placeholder="..." :value="appConfig.discordToken" readonly />
+            </div>
+            <div class="row" style="justify-content: space-between; gap: 10px">
+              <form class="form column">
+                <p style="text-align: center; font-size: 1.2em; margin-bottom: 5px; margin-right: 0px">Refresh Token</p>
+                <input type="email" placeholder="Email..." v-model="appConfig.discordEmail" />
+                <input type="password" placeholder="Password..." v-model="appConfig.discordPassword" />
+                <div class="row" style="justify-content: space-between">
+                  <div class="row">
+                    <input style="flex-grow: 0; margin: auto 0px; height: 20px" @input="(e) => updateConfig('discord_store_credentials', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.discordStoreCredentials" />
+                    <span style="margin-left: 8px; margin-top: auto; margin-bottom: auto">Store credentials unencrypted</span>
+                  </div>
+                  <div class="row">
+                    <button type="submit" style="padding: 0.4em 0.8em" @click.prevent="discordLogin">Refresh</button>
+                  </div>
+                </div>
+              </form>
+              <div class="row" style="flex-grow: 1; padding-right: 30px">
+                <div class="column" style="justify-content: start; flex-grow: 1; margin-top: 15px">
+                  <p style="text-align: center; font-size: 1.2em; margin-bottom: 5px; margin-right: 0px; margin-top: 0px">Discord IDS</p>
+                  <div class="row" style="margin-bottom: 5px">
+                    <p style="margin: auto 0px; margin-right: 5px; flex-basis: 80px">Channel ID</p>
+                    <input type="text" style="flex-grow: 1" placeholder="..." />
+                  </div>
+                  <div class="row">
+                    <p style="margin: auto 0px; margin-right: 5px; flex-basis: 80px">Bot ID</p>
+                    <input type="text" style="flex-grow: 1" placeholder="..." />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p style="font-style: italic">Note: Its recommended to use a secondary account and join only the slavart server</p>
+            <button @click="async () => await invoke('test_cmd')">TESTING BUTTON</button>
+          </div>
+        </template>
+      </SettingsGroup>
       <SettingsGroup :body-as-column="true" class="group-download">
         <template #head>
           <IconFolderFilled size="30" class="icon setting-icon" />
@@ -75,8 +132,23 @@ async function setLocalFilesPath() {
         <template #body>
           <p>Download Path</p>
           <div class="row">
-            <input :value="downloadInputValue" type="text" placeholder="Open..." style="flex-grow: 1" />
+            <input :value="appConfig.downloadPath" type="text" placeholder="Open..." style="flex-grow: 1" />
             <button style="margin-left: 15px" @click="setDownloadPath">
+              <IconFolder class="icon clickable-effect" />
+            </button>
+          </div>
+        </template>
+      </SettingsGroup>
+      <SettingsGroup :body-as-column="true" class="group-local-files">
+        <template #head>
+          <IconFileFilled size="30" class="icon setting-icon" />
+          <h1>Local Files</h1>
+        </template>
+        <template #body>
+          <p>Default Directory</p>
+          <div class="row">
+            <input :value="appConfig.directoryViewPath" type="text" placeholder="Open..." style="flex-grow: 1" />
+            <button style="margin-left: 15px" @click="setLocalFilesPath">
               <IconFolder class="icon clickable-effect" />
             </button>
           </div>
@@ -90,7 +162,7 @@ async function setLocalFilesPath() {
         <template #body>
           <p style="font-size: 1em">Downloaded files will be saved with the following name</p>
           <div class="row">
-            <input style="flex-grow: 1" type="text" spellcheck="false" placeholder="File name template..." :value="fileTemplateValue" ref="fileTemplateInput" />
+            <input style="flex-grow: 1" type="text" spellcheck="false" placeholder="File name template..." :value="appConfig.fileTemplate" ref="fileTemplateInput" />
             <button @click.prevent="saveFileTemplate" style="margin-left: 10px">
               <IconCheck class="icon clickable-effect" />
             </button>
@@ -100,21 +172,6 @@ async function setLocalFilesPath() {
             <p v-for="item in filterColumnsDownload" :key="item.id" class="clickable-effect" v-tooltip="{ content: 'Copied!', triggers: ['click'], hideTriggers: ['hover'] }" @click="copyEventTargetToClipboard">
               {{ `%${item.key}%` }}
             </p>
-          </div>
-        </template>
-      </SettingsGroup>
-      <SettingsGroup :body-as-column="true" class="group-local-files">
-        <template #head>
-          <IconFileFilled size="30" class="icon setting-icon" />
-          <h1>Local Files</h1>
-        </template>
-        <template #body>
-          <p>Default Directory</p>
-          <div class="row">
-            <input :value="localFilesInputValue" type="text" placeholder="Open..." style="flex-grow: 1" />
-            <button style="margin-left: 15px" @click="setLocalFilesPath">
-              <IconFolder class="icon clickable-effect" />
-            </button>
           </div>
         </template>
       </SettingsGroup>
@@ -324,6 +381,35 @@ h1 {
   margin-bottom: auto;
   text-align: center;
   user-select: none;
+}
+
+.group-discord p {
+  text-align: left;
+}
+
+.group-discord input {
+  height: 1.7em;
+  padding: 0.2em 1em;
+}
+
+.group-discord .form {
+  width: 50%;
+  padding: 5px 30px;
+  margin: 0px;
+  margin-top: 10px;
+}
+
+.group-discord .form p {
+  min-width: 100px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: 0px;
+  margin-right: 8px;
+}
+
+.group-discord .form input {
+  flex-grow: 1;
+  margin-bottom: 5px;
 }
 
 .group-download p {

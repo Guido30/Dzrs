@@ -1,15 +1,17 @@
 import { invoke } from "@tauri-apps/api/tauri";
-import { ref } from "vue";
+import { ref, reactive } from "vue";
 
-export const appConfig = JSON.parse(await invoke("config_get").then((res) => res), (key, value) => {
-  if (value === "true" || value === "false") {
-    return value === "true";
-  }
-  if (/^\d+$/.test(value)) {
-    return parseInt(value);
-  }
-  return value;
-});
+export const appConfig = reactive(
+  JSON.parse(await invoke("config_get").then((res) => res), (key, value) => {
+    if (value === "true" || value === "false") {
+      return value === "true";
+    }
+    if (/^\d+$/.test(value)) {
+      return parseInt(value);
+    }
+    return value;
+  })
+);
 
 export const filterColumnsDownload = ref([
   { key: "title", label: "Title", config: "", readonly: true, enabled: true, width: 20 },

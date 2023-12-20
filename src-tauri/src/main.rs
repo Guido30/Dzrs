@@ -2,11 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
+mod libs;
 mod models;
 mod types;
 
 use crate::config::DzrsConfiguration;
-use crate::models::slavart_api::Search;
+use crate::libs::discord::{DiscordClient, DiscordEventHandler};
+use crate::models::slavart::Search;
 use crate::types::files::{self, DzrsTrackObject, DzrsTrackObjectTagState, DzrsTrackObjectWrapper};
 use crate::types::slavart::SlavartDownloadItems;
 use crate::types::tags::{DeezerTagger, DzrsTrackObjectTags};
@@ -64,6 +66,49 @@ pub fn browse<P: AsRef<Path>>(path: P) -> Result<(), String> {
         Ok(_) => Ok(()),
         Err(err) => Err(err.to_string()),
     }
+}
+
+// Logs in using the discord api and retrieves the user token
+#[tauri::command]
+async fn discord_token(
+    email: Option<String>,
+    password: Option<String>,
+    discord: State<'_, async_mutex::Mutex<DiscordClient>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<String, String> {
+    let conf = configuration.lock().unwrap().parsed();
+
+    let email = email.unwrap_or(conf.discord_email);
+    let password = password.unwrap_or(conf.discord_password);
+
+    discord.lock().await.token(email, password).await
+}
+
+// Initializes the discord serenity client as an authenticated user using the token
+#[tauri::command]
+async fn discord_authenticate(
+    token: Option<String>,
+    discord: State<'_, async_mutex::Mutex<DiscordClient>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), String> {
+    let conf = configuration.lock().unwrap().parsed();
+
+    let token = token.unwrap_or(conf.discord_token);
+    let channel_id = conf.discord_channel_id;
+    let bot_id = conf.discord_bot_id;
+
+    let handler = DiscordEventHandler::new(&channel_id, &bot_id);
+    discord.lock().await.authenticate(&token, handler).await
+}
+
+// TESTING COMMAND
+#[tauri::command]
+async fn test_cmd(
+    discord: State<'_, async_mutex::Mutex<DiscordClient>>,
+    configuration: State<'_, Mutex<DzrsConfiguration>>,
+) -> Result<(), ()> {
+    discord.lock().await.auth_client.as_mut().unwrap().start().await;
+    Ok(())
 }
 
 // Commands for manipulating the inner DzrsTrackObjectWrapper from front-end
@@ -480,6 +525,7 @@ fn main() {
     let config: Mutex<DzrsConfiguration> = Mutex::new(DzrsConfiguration::load(config_path));
     let tracks_obj: Mutex<DzrsTrackObjectWrapper> = Mutex::new(DzrsTrackObjectWrapper::default());
     let tagger: DeezerTagger = DeezerTagger::new();
+    let discord: async_mutex::Mutex<DiscordClient> = async_mutex::Mutex::new(DiscordClient::new());
     let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
@@ -494,8 +540,12 @@ fn main() {
         .manage(config)
         .manage(tracks_obj)
         .manage(tagger)
+        .manage(discord)
         .manage(watcher.clone())
         .invoke_handler(tauri::generate_handler![
+            discord_token,
+            discord_authenticate,
+            test_cmd,
             tracks_clear,
             tracks_replace,
             tracks_insert,

@@ -8,8 +8,8 @@ pub struct Search {
     pub tracks: Tracks,
     pub artists: ArtistsRoot,
     pub playlists: Playlists,
-    pub focus: Focus,
-    pub articles: Articles,
+    pub focus: Option<Focus>,
+    pub articles: Option<Articles>,
     pub stories: Stories,
     pub most_popular: MostPopular,
 }

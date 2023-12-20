@@ -1,4 +1,4 @@
-use crate::models::slavart_api::Search;
+use crate::models::slavart::Search;
 
 use chrono::prelude::DateTime;
 use chrono::Utc;
