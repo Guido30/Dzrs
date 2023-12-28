@@ -1,10 +1,9 @@
-use std::str::FromStr;
-
 use reqwest::header::{HeaderMap, HeaderValue};
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::Message;
 use serenity::model::gateway::GatewayIntents;
 use serenity::model::id::{ChannelId, UserId};
+use std::str::FromStr;
 
 use crate::models::discord::DiscordLogin;
 
@@ -64,6 +63,17 @@ impl DiscordClient {
         Ok(payload.token)
     }
 
+    // Starts the websocket on the authenticated client for listening to discord events
+    pub async fn start(&mut self) -> Result<(), String> {
+        match self.auth_client {
+            Some(ref mut c) => match c.start().await {
+                Ok(_) => Ok(()),
+                Err(err) => Err(err.to_string()),
+            },
+            None => Err("Discord authenticated client not initialized".to_owned()),
+        }
+    }
+
     // Sends the download command in the slavart discord channel
     pub fn send_download_cmd(&self) {
         unimplemented!()
@@ -88,6 +98,7 @@ impl DiscordEventHandler {
 #[serenity::async_trait]
 impl EventHandler for DiscordEventHandler {
     async fn message(&self, ctx: Context, msg: Message) {
+        println!("{:?}", msg);
         if msg.author.id == self.bot_id {
             println!("{:?}", msg.embeds);
         };

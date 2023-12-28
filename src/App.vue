@@ -48,8 +48,10 @@ onMounted(async () => {
     appWindow.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
   }
   // Authenticate the discord client using the stored token
-  if (appConfig.discordToken) {
-    await invoke("discord_authenticate", { token: appConfig.discordToken }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "Discord Login", msg: err }));
+  if (appConfig.discordEnabled && appConfig.discordToken) {
+    await invoke("discord_authenticate", { token: appConfig.discordToken })
+      .then(() => appWindow.emit("instant-notification-add", { type: "Info", origin: "Discord", msg: "Discord Login Successful!" }))
+      .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "Discord Login", msg: err }));
   }
 });
 </script>

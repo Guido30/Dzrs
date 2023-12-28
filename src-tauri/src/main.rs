@@ -14,6 +14,7 @@ use crate::types::slavart::SlavartDownloadItems;
 use crate::types::tags::{DeezerTagger, DzrsTrackObjectTags};
 
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use regex::Regex;
 use std::env;
 use std::env::consts::OS;
 use std::fs::File;
@@ -98,17 +99,9 @@ async fn discord_authenticate(
     let bot_id = conf.discord_bot_id;
 
     let handler = DiscordEventHandler::new(&channel_id, &bot_id);
-    discord.lock().await.authenticate(&token, handler).await
-}
-
-// TESTING COMMAND
-#[tauri::command]
-async fn test_cmd(
-    discord: State<'_, async_mutex::Mutex<DiscordClient>>,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<(), ()> {
-    discord.lock().await.auth_client.as_mut().unwrap().start().await;
-    Ok(())
+    let mut guard = discord.lock().await;
+    guard.authenticate(&token, handler).await?;
+    guard.start().await
 }
 
 // Commands for manipulating the inner DzrsTrackObjectWrapper from front-end
@@ -253,15 +246,31 @@ async fn tracks_fetch(
             Some(tr) => {
                 // Fetch tags from deezer using the track metadata
                 let mut tr = tr.to_owned();
-                let tr_meta = (tr.tags.title.deref(), tr.tags.album.deref(), tr.tags.artist.deref());
-                let query = match (
+                let _file_name = tr.file_name.to_owned();
+                let re_title = Regex::new(r"[\[\(].*?(?:with|feat).*?[\]\)]").unwrap();
+                let re_album = Regex::new(r"[\[\(]?(?i:explicit)[\]\)]?").unwrap();
+                // Stripping featured artists from the title and explicit from album, messes up the deezer search
+                let _title = tr.tags.title.to_owned();
+                let _album = tr.tags.album.to_owned();
+                let _title = re_title.replace_all(&_title, "");
+                let _album = re_album.replace_all(&_album, "");
+                let file_name = _file_name.strip_suffix(".flac").unwrap();
+                let tr_meta = (_title.deref(), _album.deref(), tr.tags.artist.deref());
+
+                let queries = match (
                     tr_meta.0.is_empty() && tr_meta.1.is_empty() && tr_meta.2.is_empty(),
                     conf.tag_fetch_with_filename,
                 ) {
-                    (true, true) => tr.file_name.clone().strip_suffix(".flac").unwrap().into(),
-                    _ => format!(r#"track:"{}" album:"{}" artist:"{}""#, tr_meta.0, tr_meta.1, tr_meta.2),
+                    (true, true) => (file_name.to_owned(), file_name.to_owned()),
+                    _ => (
+                        format!(r#"track:"{}" album:"{}" artist:"{}""#, tr_meta.0, tr_meta.1, tr_meta.2),
+                        format!(r#"track:"{}" album:"{}""#, tr_meta.0, tr_meta.1),
+                    ),
                 };
-                let payload = tagger.fetch_by_query(&query).await;
+                let payload = match tagger.fetch_by_query(&queries.0).await {
+                    Ok(p) => Ok(p),
+                    Err(_) => tagger.fetch_by_query(&queries.1).await,
+                };
                 // Update the DzrsTrackObject using the fetched tags
                 match payload {
                     Ok(payload) => {
@@ -545,7 +554,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             discord_token,
             discord_authenticate,
-            test_cmd,
             tracks_clear,
             tracks_replace,
             tracks_insert,
