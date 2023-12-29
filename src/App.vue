@@ -44,7 +44,7 @@ onMounted(async () => {
   // Finally when everything is initialized, show the main window
   await appWindow.show();
   // Notify the user if loading the config failed
-  if (!appConfig._loaded && !appConfig._created) {
+  if (!appConfig._loaded || !appConfig._created) {
     appWindow.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
   }
   // Authenticate the discord client using the stored token

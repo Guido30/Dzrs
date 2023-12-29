@@ -69,6 +69,55 @@ pub fn browse<P: AsRef<Path>>(path: P) -> Result<(), String> {
     }
 }
 
+// Downloads a track from slavart api into a file
+async fn d_slavart_api(id: u64, filename: &str, directory: &str, overwrite: bool) -> Result<(), String> {
+    let url = format!("https://slavart-api.gamesdrive.net/api/download/track?id={id}");
+    let file_path = PathBuf::from(directory).join(format!("{}.flac", filename));
+    if file_path.exists() && !overwrite {
+        return Err(format!(
+            "File {:?} already exists",
+            file_path.file_name().unwrap_or_default()
+        ));
+    }
+    let response = reqwest::get(&url).await.map_err(|err| err.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("Error {} for {}", response.status().as_str(), url));
+    }
+    let (content_length, bytes) = (
+        response.content_length().unwrap_or_default(),
+        response.bytes().await.unwrap(),
+    );
+    let res_length = bytes.len();
+    if content_length != res_length as u64 || res_length <= 1024 {
+        return Err(format!("Download failed, received {} / {} bytes", res_length, content_length).into());
+    };
+    let mut file = File::create(file_path).map_err(|err| err.to_string())?;
+    let bytes: Vec<u8> = bytes.into();
+    file.write_all(&bytes).map_err(|err| err.to_string())?;
+    Ok(())
+}
+
+// Downloads a track using the discord api and an account that has access to the slavart server
+async fn d_discord() -> Result<(), String> {
+    Err("Discord download not implemented yet!".into())
+}
+
+// Downloads a track using the slavartdl cli
+async fn d_slavartdl(id: u64, cli_path: &str) -> Result<(), String> {
+    let url = format!("https://open.qobuz.com/track/{id}");
+    let cmd = Command::new(cli_path)
+        .args(["download", &url])
+        .output()
+        .map_err(|err| err.to_string())?;
+
+    if !cmd.status.success() {
+        let err = String::from_utf8(cmd.stderr).map_err(|err| err.to_string())?;
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
 // Logs in using the discord api and retrieves the user token
 #[tauri::command]
 async fn discord_token(
@@ -448,42 +497,43 @@ async fn get_slavart_tracks(query: String) -> Result<SlavartDownloadItems, Strin
     }
 }
 
+// Downloads a track from a given qobuz id, the download is made using all enabled download methods
+// in order until one is successful, the order for now is Slavart Api (Always enabled) -> Discord (currently not implemented) -> SlavartDL
 #[tauri::command]
-async fn download_track(
-    id: u64,
-    filename: String,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<(), String> {
-    let url = format!("https://slavart-api.gamesdrive.net/api/download/track?id={id}");
-    let file_path =
-        PathBuf::from(configuration.lock().unwrap().download_path.clone()).join(format!("{}.flac", filename));
-    if file_path.exists() && (configuration.lock().unwrap().overwrite_downloads == "false") {
-        return Err(format!(
-            "File {:?} already exists",
-            file_path.file_name().unwrap_or_default()
-        ));
+async fn download_track(id: u64, filename: String, config: State<'_, Mutex<DzrsConfiguration>>) -> Result<(), String> {
+    let mut tries = 1;
+    let mut errors = Vec::new();
+    let conf = config.lock().unwrap().parsed();
+    let (dir, overwrite, slavartdl_path) = (conf.download_path, conf.overwrite_downloads, conf.slavartdl_path);
+
+    // Slavart API (Always Enabled)
+    match d_slavart_api(id, &filename, &dir, overwrite).await {
+        Ok(_) => return Ok(()),
+        Err(err) => errors.push(err),
+    };
+
+    // Discord
+    if conf.discord_enabled {
+        tries += 1;
+        match d_discord().await {
+            Ok(_) => return Ok(()),
+            Err(err) => errors.push(err),
+        };
     }
-    let response = match reqwest::get(&url).await {
-        Ok(res) => res,
-        Err(err) => return Err(err.to_string()),
+
+    // SlavartDL
+    if conf.slavartdl_enabled {
+        tries += 1;
+        match d_slavartdl(id, &slavartdl_path).await {
+            Ok(_) => return Ok(()),
+            Err(err) => errors.push(err),
+        };
     };
-    if !response.status().is_success() {
-        return Err(format!("Error {} for {}", response.status().as_str(), url));
-    }
-    let content_length: u64 = response.content_length().unwrap_or_default();
-    let bytes = response.bytes().await.unwrap();
-    let res_length = bytes.len();
-    if content_length != res_length as u64 || res_length <= 1024 {
-        return Err(format!("Download failed, received {} / {} bytes", res_length, content_length).into());
-    };
-    let mut file = match File::create(file_path) {
-        Ok(file) => file,
-        Err(err) => return Err(err.to_string()),
-    };
-    let bytes: Vec<u8> = bytes.into();
-    match file.write_all(&bytes) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.to_string()),
+
+    if errors.len() == tries {
+        Err(errors.join("\n"))
+    } else {
+        Ok(())
     }
 }
 

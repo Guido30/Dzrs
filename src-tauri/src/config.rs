@@ -3,6 +3,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::Path;
+use tauri::api::path::{audio_dir, download_dir};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -305,14 +306,24 @@ impl DzrsConfiguration {
 
 impl Default for DzrsConfiguration {
     fn default() -> Self {
+        let download_path = download_dir()
+            .unwrap_or_default()
+            .into_os_string()
+            .into_string()
+            .unwrap_or_default();
+        let audio_path = audio_dir()
+            .unwrap_or_default()
+            .into_os_string()
+            .into_string()
+            .unwrap_or_default();
         Self {
             _path: String::new(),
             _loaded: false,
             _created: false,
-            download_path: "".into(),
+            download_path: download_path,
             file_template: "%title% - %album%".into(),
             overwrite_downloads: "true".into(),
-            directory_view_path: "".into(),
+            directory_view_path: audio_path,
             discord_enabled: "false".into(),
             discord_token: "".into(),
             discord_email: "".into(),

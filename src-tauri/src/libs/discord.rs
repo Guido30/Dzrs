@@ -98,9 +98,8 @@ impl DiscordEventHandler {
 #[serenity::async_trait]
 impl EventHandler for DiscordEventHandler {
     async fn message(&self, ctx: Context, msg: Message) {
-        println!("{:?}", msg);
         if msg.author.id == self.bot_id {
-            println!("{:?}", msg.embeds);
+            unimplemented!()
         };
     }
 }

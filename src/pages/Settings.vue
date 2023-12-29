@@ -147,7 +147,7 @@ function downloadSourceToggleStyle(e) {
             <div class="column" :class="{ 'disabled-el': !appConfig.discordEnabled }">
               <div class="row" style="font-size: 1.5em; margin-bottom: 4px">
                 <IconBrandDiscordFilled class="icon" size="30px" />
-                <p style="margin: auto 0px; padding-left: 5px">Discord</p>
+                <p style="margin: auto 0px; padding-left: 5px">Discord (NOT IMPLEMENTED)</p>
               </div>
               <div class="row" style="gap: 10px; margin-top: 5px">
                 <input type="text" style="flex-grow: 1" placeholder="..." :value="appConfig.discordToken" readonly />
@@ -193,7 +193,6 @@ function downloadSourceToggleStyle(e) {
                 </div>
               </div>
               <p style="font-style: italic">Note: Its recommended to use a secondary account and join only the slavart server</p>
-              <button @click="async () => await invoke('test_cmd')">TESTING BUTTON</button>
             </div>
           </div>
           <div class="slavartdl-div column">
@@ -219,12 +218,12 @@ function downloadSourceToggleStyle(e) {
               <div>
                 <div class="row" style="margin-top: 5px">
                   <p style="margin: auto 0px; flex-basis: 150px">SlavartDL Path</p>
-                  <input :value="appConfig.slavartdlPath" type="text" placeholder="Open..." style="flex-grow: 1" />
+                  <input :value="appConfig.slavartdlPath" type="text" placeholder="Select..." style="flex-grow: 1" />
                   <button style="margin-left: 15px" @click="setSlavartdlPath">
                     <IconFolder size="18px" class="icon clickable-effect" />
                   </button>
                 </div>
-                <p style="font-style: italic">Note: Configure SlavartDL manually before using it, make sure the output dir matches the download path in Dzrs</p>
+                <p style="font-style: italic">Note: SlavartDL needs to be manually configured!</p>
               </div>
             </div>
           </div>
