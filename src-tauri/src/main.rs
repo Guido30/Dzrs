@@ -20,6 +20,7 @@ use std::env::consts::OS;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -105,10 +106,12 @@ async fn d_discord() -> Result<(), String> {
 // Downloads a track using the slavartdl cli
 async fn d_slavartdl(id: u64, cli_path: &str) -> Result<(), String> {
     let url = format!("https://open.qobuz.com/track/{id}");
-    let cmd = Command::new(cli_path)
-        .args(["download", &url])
-        .output()
-        .map_err(|err| err.to_string())?;
+    let mut cmd = Command::new(cli_path);
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // No console window
+
+    let cmd = cmd.args(["download", &url]).output().map_err(|err| err.to_string())?;
 
     if !cmd.status.success() {
         let err = String::from_utf8(cmd.stderr).map_err(|err| err.to_string())?;
