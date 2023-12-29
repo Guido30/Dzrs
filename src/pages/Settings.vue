@@ -1,5 +1,5 @@
 <script setup>
-import { IconBrandStorybook, IconBrandDiscordFilled, IconFolder, IconWorldDownload, IconTextSize, IconCheck, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
+import { IconNotes, IconBrandStorybook, IconBrandDiscordFilled, IconFolder, IconWorldDownload, IconTextSize, IconCheck, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
 
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -112,7 +112,16 @@ function downloadSourceToggleStyle(e) {
 </script>
 
 <template>
-  <HeaderBar />
+  <HeaderBar>
+    <div class="row header-content" style="justify-content: start">
+      <button style="padding: 2px 8px" @click="invoke('browse_cmd', { path: appConfig._path.replace('config.json', '') })">
+        <div class="row clickable-effect" style="color: var(--color-text)">
+          <IconNotes size="20" class="icon" style="margin-right: 3px" />
+          <span>Open Config</span>
+        </div>
+      </button>
+    </div>
+  </HeaderBar>
   <div class="container" style="overflow-y: auto">
     <div class="column">
       <SettingsGroup :body-as-column="true" class="group-download">

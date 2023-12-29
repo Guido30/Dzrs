@@ -175,17 +175,6 @@ input {
   flex-grow: 1;
 }
 
-.header-content {
-  flex-grow: 1;
-  border-right: 1px solid var(--color-accent);
-  margin-top: 5px;
-  margin-bottom: 5px;
-  margin-left: 20px;
-  margin-right: 20px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
 .header-content > button {
   padding: 2px 15px;
 }

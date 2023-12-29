@@ -897,16 +897,6 @@ p {
   margin-bottom: auto;
 }
 
-.header-content {
-  flex-grow: 1;
-  border-right: 1px solid var(--color-accent);
-  margin-top: 5px;
-  margin-bottom: 5px;
-  margin-right: 20px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
 .header-content span {
   user-select: none;
 }

@@ -32,7 +32,7 @@ impl DiscordClient {
         }
     }
 
-    // Starts the serenity client using provided token
+    // Starts a new serenity client using provided token
     pub async fn authenticate(&mut self, token: &str, event_handler: DiscordEventHandler) -> Result<(), String> {
         let auth_client = serenity::Client::builder(token, GatewayIntents::DIRECT_MESSAGES)
             .event_handler(event_handler)
@@ -64,13 +64,12 @@ impl DiscordClient {
     }
 
     // Starts the websocket on the authenticated client for listening to discord events
-    pub async fn start(&mut self) -> Result<(), String> {
-        match self.auth_client {
-            Some(ref mut c) => match c.start().await {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err.to_string()),
-            },
-            None => Err("Discord authenticated client not initialized".to_owned()),
+    pub fn start(&mut self) -> Result<(), String> {
+        if let Some(mut c) = self.auth_client.take() {
+            tokio::task::spawn(async move { c.start().await });
+            Ok(())
+        } else {
+            Err("Discord authenticated client not initialized".to_owned())
         }
     }
 
@@ -98,6 +97,7 @@ impl DiscordEventHandler {
 #[serenity::async_trait]
 impl EventHandler for DiscordEventHandler {
     async fn message(&self, ctx: Context, msg: Message) {
+        println!("{:?}", msg);
         if msg.author.id == self.bot_id {
             unimplemented!()
         };

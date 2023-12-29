@@ -20,7 +20,6 @@ use std::env::consts::OS;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -109,7 +108,10 @@ async fn d_slavartdl(id: u64, cli_path: &str) -> Result<(), String> {
     let mut cmd = Command::new(cli_path);
 
     #[cfg(target_os = "windows")]
-    cmd.creation_flags(0x08000000); // No console window
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // No console window
+    }
 
     let cmd = cmd.args(["download", &url]).output().map_err(|err| err.to_string())?;
 
@@ -153,7 +155,7 @@ async fn discord_authenticate(
     let handler = DiscordEventHandler::new(&channel_id, &bot_id);
     let mut guard = discord.lock().await;
     guard.authenticate(&token, handler).await?;
-    guard.start().await
+    guard.start()
 }
 
 // Commands for manipulating the inner DzrsTrackObjectWrapper from front-end
@@ -580,9 +582,8 @@ async fn browse_cmd(path: String) -> Result<(), String> {
 fn main() {
     let app_dir = platform_app_dir();
     let config_path = app_dir.join("config.json");
-    if !config_path.exists() {
-        let _ = std::fs::create_dir_all(config_path.parent().unwrap()); //safe unwrap
-        let _ = std::fs::write(config_path.clone(), b"");
+    if !app_dir.exists() {
+        let _ = std::fs::create_dir_all(app_dir);
     }
     let config: Mutex<DzrsConfiguration> = Mutex::new(DzrsConfiguration::load(config_path));
     let tracks_obj: Mutex<DzrsTrackObjectWrapper> = Mutex::new(DzrsTrackObjectWrapper::default());

@@ -44,7 +44,7 @@ onMounted(async () => {
   // Finally when everything is initialized, show the main window
   await appWindow.show();
   // Notify the user if loading the config failed
-  if (!appConfig._loaded || !appConfig._created) {
+  if (!appConfig._loaded && !appConfig._created) {
     appWindow.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
   }
   // Authenticate the discord client using the stored token
@@ -146,6 +146,16 @@ body {
   border: 1px solid transparent;
   background-color: var(--color-bg-1);
   box-shadow: 2px 2px 5px var(--color-shadow);
+}
+
+.header-content {
+  flex-grow: 1;
+  border-right: 1px solid var(--color-accent);
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 20px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .icon {
