@@ -2,7 +2,7 @@
     <img src="images/PreviewLogo.png" width=150px/>
 </p>
 
-### DISCLAIMER: Currently work in progress, while downloading works (when slavart decides to fix their backend), tagging still needs some work, the sources panel isnt implemented yet, and overall a lot of features need to be added/fixed.
+### DISCLAIMER: Currently work in progress, while downloading works (when slavart decides to fix their backend, for now use slavartdl), tagging still needs some work, and overall a lot of features need to be added/fixed.
 
 ## Features
 
@@ -23,6 +23,9 @@ Head over to the [releases](https://github.com/Guido30/Dzrs/releases) page and d
 </p>
 <p align="center">
     <img src="images/Preview2.png"/>
+</p>
+<p align="center">
+    <img src="images/Preview3.png"/>
 </p>
 
 ## Notice
