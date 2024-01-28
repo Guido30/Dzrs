@@ -51,7 +51,11 @@ pub fn read_flac<P: AsRef<Path>>(path: P) -> Result<FlacFile, Box<dyn std::error
 }
 
 // Save given DzrsTrackObjectTags into a flac file, by manipulating the file stored vorbis tags
-pub fn save_tags<P: AsRef<Path>>(path: P, tags: &DzrsTrackObjectTags) -> Result<(), String> {
+pub fn save_tags<P: AsRef<Path>>(
+    path: P,
+    tags: &DzrsTrackObjectTags,
+    conf: &DzrsConfigurationParsed,
+) -> Result<(), String> {
     let path = path.as_ref().to_str().unwrap();
     let mut flac = match read_flac(path) {
         Ok(f) => f,
@@ -61,7 +65,7 @@ pub fn save_tags<P: AsRef<Path>>(path: P, tags: &DzrsTrackObjectTags) -> Result<
         Some(v) => v,
         None => return Err(format!("Vorbis Comments not found for {}", path)),
     };
-    set_vorbis_tags(tags, vorbis);
+    set_vorbis_tags(tags, vorbis, conf);
     if let Err(err) = flac.save_to_path(path) {
         return Err(err.to_string());
     };

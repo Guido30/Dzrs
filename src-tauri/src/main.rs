@@ -501,7 +501,7 @@ async fn save_tags(
 ) -> Result<(), String> {
     let conf = config.lock().unwrap().parsed();
     // Save tags into the flac
-    files::save_tags(&path, &tags)?;
+    files::save_tags(&path, &tags, &conf)?;
     // Update the loaded track to match the saved file
     let mut track_ = DzrsTrackObject::new(&path)?;
     track_.load_tags(&conf)?;

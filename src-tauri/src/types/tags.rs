@@ -9,7 +9,7 @@ use lofty::{Picture, PictureInformation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub fn set_vorbis_tags(tags: &DzrsTrackObjectTags, vorbis: &mut VorbisComments) {
+pub fn set_vorbis_tags(tags: &DzrsTrackObjectTags, vorbis: &mut VorbisComments, conf: &DzrsConfigurationParsed) {
     let tags = tags.clone();
     vorbis.set_title(tags.title);
     vorbis.set_artist(tags.artist);
@@ -42,12 +42,18 @@ pub fn set_vorbis_tags(tags: &DzrsTrackObjectTags, vorbis: &mut VorbisComments) 
     vorbis.insert("REPLAYGAIN_TRACK_PEAK".to_string(), tags.replaygain_track_peak);
     vorbis.insert("SOURCEID".to_string(), tags.source_id);
     vorbis.insert("ENCODER".to_string(), tags.encoder);
-    for item in tags.extra_tags {
-        if let Some(tag_value) = vorbis.get(&item.0) {
-            if tag_value != &item.1 {
-                vorbis.insert(item.0, item.1);
+    if conf.tag_clear_extra_tags {
+        for item in tags.extra_tags {
+            vorbis.remove(&item.0);
+        }
+    } else {
+        for item in tags.extra_tags {
+            if let Some(tag_value) = vorbis.get(&item.0) {
+                if tag_value != &item.1 {
+                    vorbis.insert(item.0, item.1);
+                };
             };
-        };
+        }
     }
 }
 
@@ -227,7 +233,7 @@ impl DzrsTrackObjectTags {
         let mut extra_tags: Vec<(String, String)> = Vec::new();
         let v = vorbis.items();
         for tag in v {
-            match tag.0 {
+            match tag.0.to_uppercase().as_str() {
                 "TITLE" => t.title = tag.1.to_string(),
                 "ARTIST" => artists.push(tag.1.to_string()),
                 "BARCODE" => t.barcode = tag.1.to_string(),
@@ -261,7 +267,7 @@ impl DzrsTrackObjectTags {
                 "REPLAYGAIN_TRACK_PEAK" => t.replaygain_track_peak = tag.1.to_string(),
                 "SOURCEID" => t.source_id = tag.1.to_string(),
                 "ENCODER" => t.encoder = tag.1.to_string(),
-                _ => extra_tags.push((tag.0.to_string(), tag.1.to_string())),
+                _ => extra_tags.push((tag.0.to_uppercase(), tag.1.to_string())),
             };
         }
         t.artist = artists.join(sep);

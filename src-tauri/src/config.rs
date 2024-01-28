@@ -71,6 +71,7 @@ pub struct DzrsConfiguration {
     pub tag_fetch_with_filename: String,
     pub tag_date_as_year: String,
     pub tag_originaldate_as_year: String,
+    pub tag_clear_extra_tags: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -135,6 +136,7 @@ pub struct DzrsConfigurationParsed {
     pub tag_fetch_with_filename: bool,
     pub tag_date_as_year: bool,
     pub tag_originaldate_as_year: bool,
+    pub tag_clear_extra_tags: bool,
 }
 
 impl DzrsConfiguration {
@@ -227,6 +229,7 @@ impl DzrsConfiguration {
             "tag_fetch_with_filename" => self.tag_fetch_with_filename = value,
             "tag_date_as_year" => self.tag_date_as_year = value,
             "tag_originaldate_as_year" => self.tag_originaldate_as_year = value,
+            "tag_clear_extra_tags" => self.tag_clear_extra_tags = value,
             _ => (),
         }
     }
@@ -300,6 +303,7 @@ impl DzrsConfiguration {
             tag_fetch_with_filename: self.tag_fetch_with_filename.parse().unwrap_or(true),
             tag_date_as_year: self.tag_date_as_year.parse().unwrap_or(true),
             tag_originaldate_as_year: self.tag_originaldate_as_year.parse().unwrap_or(true),
+            tag_clear_extra_tags: self.tag_clear_extra_tags.parse().unwrap_or(false),
         }
     }
 }
@@ -377,6 +381,7 @@ impl Default for DzrsConfiguration {
             tag_fetch_with_filename: "true".into(),
             tag_date_as_year: "true".into(),
             tag_originaldate_as_year: "true".into(),
+            tag_clear_extra_tags: "false".into(),
         }
     }
 }

@@ -435,6 +435,10 @@ function downloadSourceToggleStyle(e) {
               <input @input="(e) => updateBackendConfig('tag_originaldate_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagOriginaldateAsYear" />
               <span style="margin-left: 8px">Retrieve ORIGINALDATE with YYYY format</span>
             </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateBackendConfig('tag_clear_extra_tags', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagClearExtraTags" />
+              <span style="margin-left: 8px">Remove all Extra Tags when saving files</span>
+            </div>
           </div>
           <div class="frame" style="padding: 15px">
             <p style="text-align: start; margin-bottom: 10px; margin-top: 0px">Add Padding to the Following Tags:</p>
