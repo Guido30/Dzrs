@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
 import { isEqual, remove as loRemove } from "lodash";
-import { IconExternalLink, IconCloudDownload, IconPointFilled, IconLoader2, IconFolder, IconTagStarred, IconTag, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
+import { IconSearch, IconExternalLink, IconCloudDownload, IconPointFilled, IconLoader2, IconFolder, IconTagStarred, IconTag, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
 import TableFilter from "../components/TableFilter.vue";
 import HeaderBar from "../components/HeaderBar.vue";
@@ -24,6 +24,9 @@ const activeDzrsTrackObject = computed(() => {
   }
   return activeTrack;
 });
+
+// Elements
+const inputFetchSources = ref(null);
 
 // Dynamic variable, updated using selectFiles(), this maps to every selected TRACK_OBJ.filePath in the local files main panel
 // used mostly for manipulating said files through invoking commands to the backend
@@ -186,6 +189,13 @@ async function fetchTrackSources() {
   tagsIsFetchingOrSaving.value = false;
 }
 
+async function fetchTrackSourcesManual() {
+  tagsIsFetchingOrSaving.value = true;
+  await invoke("tracks_fetch_sources_manual", { path: activeDzrsTrackObject.value.filePath, query: inputFetchSources.value.value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTrackSources", msg: err }));
+  await getDzrsTrackObjects([activeDzrsTrackObject.value.filePath]);
+  tagsIsFetchingOrSaving.value = false;
+}
+
 // Reload tags in the tags_to_save field for the active track to match the ones currently saved in the file
 async function reloadTagsFromFile() {
   await invoke("tracks_reload", { path: activeDzrsTrackObject.value.filePath }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "restoreTagsFromFile", msg: err }));
@@ -334,7 +344,7 @@ onBeforeMount(async () => {
             <p style="flex-grow: 1; margin-top: 5px; margin-bottom: 5px">Sources</p>
             <IconRestore v-tooltip="'Reload Original Tags'" size="1.5em" style="cursor: pointer; margin-top: 5px; margin-bottom: 5px" class="icon clickable-effect" :class="{ 'disabled-icon': tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled }" @click="reloadTagsFromFile" />
           </div>
-          <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto; justify-content: start">
+          <div class="column" style="font-size: 0.92em; overflow-x: hidden; overflow-y: auto; justify-content: start; flex-grow: 1">
             <div v-for="(source, i) in activeDzrsTrackObject.tagsSources" :key="i" class="row sources-item" style="border: 1px solid var(--color); padding: 5px">
               <a :href="source.link" target="_blank" class="sources-item-cover">
                 <IconExternalLink size="40" color="var(--color-text)" class="icon-link" />
@@ -372,6 +382,14 @@ onBeforeMount(async () => {
                 </div>
               </div>
             </div>
+          </div>
+          <div class="row" style="padding: 0px 2px; padding-top: 6px; border-top: 1px solid var(--color-bg-2)">
+            <input placeholder="Manual Search..." spellcheck="false" @keypress.enter="fetchTrackSourcesManual" ref="inputFetchSources" :disabled="tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled" style="padding: 2px 4px; flex-grow: 1; font-size: 0.8em; height: 25px" />
+            <button style="margin-left: 5px; padding: 2px 4px" @click="fetchTrackSourcesManual" :disabled="tagsIsFetchingOrSaving || !tagsFetchingOrSavingEnabled">
+              <div class="row clickable-effect" style="color: var(--color-text)">
+                <IconSearch size="18" class="icon" />
+              </div>
+            </button>
           </div>
         </div>
       </div>

@@ -408,6 +408,39 @@ async fn tracks_fetch_sources(
     Ok(())
 }
 
+// Fetch possibile tracks matching the manual query (source) from deezer and apply them into the inner DzrsTrackObject
+#[tauri::command]
+async fn tracks_fetch_sources_manual(
+    path: String,
+    query: String,
+    tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>,
+    tagger: State<'_, DeezerTagger>,
+) -> Result<(), String> {
+    let t = tracks.lock().unwrap().clone();
+    let query = query.replace("&", "");
+
+    match t.get_track_obj(&path) {
+        Some(tr) => {
+            // Fetch sources from deezer using the track metadata
+            let mut tr = tr.to_owned();
+            let sources = tagger.fetch_sources(&query).await;
+            // Update the DzrsTrackObject with the fetched sources
+            match sources {
+                Ok(sources) => {
+                    tr.tags_sources = sources;
+                    tracks.lock().unwrap().replace_track_obj(tr).unwrap();
+                }
+                Err(err) => {
+                    return Err(err);
+                }
+            };
+        }
+        _ => (),
+    };
+
+    Ok(())
+}
+
 // Fetch tags for a specific track_id and apply them into the inner DzrsTrackObjects for the given path
 // This command is used when applying a different deezer source over the file
 #[tauri::command]
@@ -625,6 +658,7 @@ fn main() {
             config_set,
             tracks_fetch,
             tracks_fetch_sources,
+            tracks_fetch_sources_manual,
             tracks_source,
             tracks_reload,
             save_tags,
