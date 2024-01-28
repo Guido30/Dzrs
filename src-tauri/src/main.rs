@@ -304,12 +304,14 @@ async fn tracks_fetch(
                 let re_title = Regex::new(r"[\[\(].*?(?:with|feat).*?[\]\)]").unwrap();
                 let re_album = Regex::new(r"[\[\(]?(?i:explicit)[\]\)]?").unwrap();
                 // Stripping featured artists from the title and explicit from album, messes up the deezer search
-                let _title = tr.tags.title.to_owned();
-                let _album = tr.tags.album.to_owned();
+                // Also stripping '&' messes up the url
+                let _title = tr.tags.title.to_owned().replace("&", "");
+                let _album = tr.tags.album.to_owned().replace("&", "");
+                let _artist = tr.tags.artist.to_owned().replace("&", "");
                 let _title = re_title.replace_all(&_title, "");
                 let _album = re_album.replace_all(&_album, "");
                 let file_name = _file_name.strip_suffix(".flac").unwrap();
-                let tr_meta = (_title.deref(), _album.deref(), tr.tags.artist.deref());
+                let tr_meta = (_title.deref(), _album.deref(), _artist.deref());
 
                 let queries = match (
                     tr_meta.0.is_empty() && tr_meta.1.is_empty() && tr_meta.2.is_empty(),
@@ -376,7 +378,11 @@ async fn tracks_fetch_sources(
         Some(tr) => {
             // Fetch sources from deezer using the track metadata
             let mut tr = tr.to_owned();
-            let tr_meta = (tr.tags.title.deref(), tr.tags.album.deref(), tr.tags.artist.deref());
+            // Stripping '&' messes up the url
+            let _title = tr.tags.title.to_owned().replace("&", "");
+            let _album = tr.tags.album.to_owned().replace("&", "");
+            let _artist = tr.tags.artist.to_owned().replace("&", "");
+            let tr_meta = (_title.deref(), _album.deref(), _artist.deref());
             let query = match (
                 tr_meta.0.is_empty() && tr_meta.1.is_empty() && tr_meta.2.is_empty(),
                 conf.tag_fetch_with_filename,

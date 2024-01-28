@@ -206,7 +206,6 @@ async function saveModifiedTracks() {
       for (const t of modifiedTracks) {
         await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err }));
       }
-      await getDzrsTrackObjects(modifiedTracks.map((t) => t.filePath));
     }
   }
 }

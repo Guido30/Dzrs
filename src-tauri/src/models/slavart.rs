@@ -127,7 +127,7 @@ pub struct TrackItem {
     pub copyright: Option<String>,
     pub performers: Option<String>,
     pub audio_info: AudioInfo,
-    pub performer: Performer,
+    pub performer: Option<Performer>,
     pub album: Album,
     pub work: Value,
     pub composer: Option<Composer>,
