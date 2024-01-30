@@ -168,8 +168,10 @@ async function fetchDzrsTrackObjects() {
   } else {
     flacs = dzrsTrackObjects.value.filter((t) => t.fileExtension === "flac" && selectedFilePaths.value.includes(t.filePath)).map((f) => f.filePath);
   }
-  await invoke("tracks_fetch", { paths: flacs }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchDzrsTrackObjects", msg: err.join(" ") }));
-  await getDzrsTrackObjects(flacs);
+  for (const p of flacs) {
+    await invoke("tracks_fetch", { paths: [p] }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchDzrsTrackObjects", msg: err.join("") }));
+    await getDzrsTrackObjects([p]);
+  }
   tagsIsFetchingOrSaving.value = false;
 }
 
@@ -177,8 +179,9 @@ async function fetchDzrsTrackObjects() {
 // Called when applying a source for a specific track
 async function fetchTrackTagsFromSource(id) {
   tagsIsFetchingOrSaving.value = true;
-  await invoke("tracks_source", { path: activeDzrsTrackObject.value.filePath, id: id }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTrackTagsFromSource", msg: err }));
-  await getDzrsTrackObjects([activeDzrsTrackObject.value.filePath]);
+  const path = activeDzrsTrackObject.value.filePath;
+  await invoke("tracks_source", { path: path, id: id }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "fetchTrackTagsFromSource", msg: err }));
+  await getDzrsTrackObjects([path]);
   tagsIsFetchingOrSaving.value = false;
 }
 
@@ -206,6 +209,7 @@ async function reloadTagsFromFile() {
 async function saveModifiedTracks() {
   const confirmation = await confirm("Save modified files?", { title: "Save", type: "warning" });
   if (confirmation) {
+    tagsIsFetchingOrSaving.value = true;
     let modifiedTracks = [];
     if (selectedFilePaths.value.length >= 1) {
       modifiedTracks = dzrsTrackObjects.value.filter((t) => !isEqual(t.tags, t.tagsToSave) && selectedFilePaths.value.includes(t.filePath));
@@ -215,8 +219,10 @@ async function saveModifiedTracks() {
     if (modifiedTracks.length !== 0) {
       for (const t of modifiedTracks) {
         await invoke("save_tags", { path: t.filePath, tags: t.tagsToSave }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "saveModifiedTracks", msg: err }));
+        await getDzrsTrackObjects([t.filePath]);
       }
     }
+    tagsIsFetchingOrSaving.value = false;
   }
 }
 
@@ -230,11 +236,9 @@ async function listenFileWatcher() {
         await invoke("tracks_insert", { path: p });
       } else if (Object.hasOwn(e.payload.type, "remove")) {
         await invoke("tracks_remove", { path: p }).catch((_) => _);
-      } else if (Object.hasOwn(e.payload.type, "modify")) {
-        await invoke("tracks_replace", { path: p }).catch((_) => _);
       }
     }
-    if (Object.hasOwn(e.payload.type, "create") || Object.hasOwn(e.payload.type, "modify")) {
+    if (Object.hasOwn(e.payload.type, "create")) {
       await getDzrsTrackObjects(e.payload.paths);
     } else if (Object.hasOwn(e.payload.type, "remove")) {
       await getDzrsTrackObjects(e.payload.paths, true);
@@ -312,11 +316,14 @@ onBeforeMount(async () => {
                   <td>
                     <IconPointFilled v-if="!isEqual(file.tags, file.tagsToSave)" />
                   </td>
-                  <td class="img-container" @click="console.log(file.tagsStatus)">
-                    <IconMusic v-if="['flac', 'mp3'].includes(file.fileExtension)" color="#c9c9c9" />
-                    <IconFile v-else color="#c9c9c9" />
+                  <td class="img-container">
+                    <div class="row">
+                      <img v-if="file.tagsPictures.length >= 1" :src="`data:image/png;base64, ${file.tagsPictures[0].b64}`" style="border-radius: 4px" />
+                      <IconMusic v-else-if="['flac', 'mp3'].includes(file.fileExtension)" color="#c9c9c9" />
+                      <IconFile v-else color="#c9c9c9" />
+                    </div>
                   </td>
-                  <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="text-align: left; font-style: italic">
+                  <td v-show="filterColumnsDirView.find((col) => col.key === 'filename' && col.enabled)" style="padding-left: 4px; text-align: left">
                     {{ file.fileName }}
                   </td>
                   <td v-show="filterColumnsDirView.find((col) => col.key === 'size' && col.enabled)">{{ (file.fileSize / (1024 * 1024)).toFixed(1) }} MB</td>

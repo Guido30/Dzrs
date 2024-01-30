@@ -1,9 +1,9 @@
 [package]
 name = "dzrs"
-version = "0.1.5"
+version = "0.1.6"
 description = "Dzrs"
 authors = ["Guido30"]
-license = ""
+license = "MIT"
 repository = "https://github.com/Guido30/Dzrs.git"
 edition = "2021"
 

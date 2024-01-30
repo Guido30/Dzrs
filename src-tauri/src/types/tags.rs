@@ -44,7 +44,7 @@ pub fn set_vorbis_tags(tags: &DzrsTrackObjectTags, vorbis: &mut VorbisComments, 
     vorbis.insert("ENCODER".to_string(), tags.encoder);
     if conf.tag_clear_extra_tags {
         for item in tags.extra_tags {
-            vorbis.remove(&item.0);
+            let _ = vorbis.remove(&item.0);
         }
     } else {
         for item in tags.extra_tags {
