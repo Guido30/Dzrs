@@ -40,9 +40,6 @@ onMounted(async () => {
       <div class="row header-btn" @click="changeView('Main')" :class="{ active: activePageName === 'Main' }">
         <p>Tagging</p>
       </div>
-      <div class="row header-btn" @click="changeView('Download')" :class="{ active: activePageName === 'Download' }">
-        <p>Download</p>
-      </div>
       <div class="row header-btn" @click="changeView('Settings')" :class="{ active: activePageName === 'Settings' }">
         <p>Settings</p>
       </div>
@@ -132,7 +129,7 @@ h1 {
 }
 
 img {
-  width: 50px;
+  width: 60px;
   height: 50px;
   margin-top: auto;
   margin-bottom: auto;

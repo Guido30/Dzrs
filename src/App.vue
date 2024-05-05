@@ -3,7 +3,6 @@ import { onMounted, shallowRef, ref } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import Main from "./pages/Main.vue";
-import Download from "./pages/Download.vue";
 import Settings from "./pages/Settings.vue";
 import About from "./pages/About.vue";
 import Notifications from "./components/Notifications.vue";
@@ -18,9 +17,6 @@ onMounted(async () => {
   // Listener for swapping between views
   await appWindow.listen("view-change", (event) => {
     switch (event.payload) {
-      case "Download":
-        activePage.value = Download;
-        break;
       case "Settings":
         activePage.value = Settings;
         break;
@@ -46,12 +42,6 @@ onMounted(async () => {
   // Notify the user if loading the config failed
   if (!appConfig._loaded && !appConfig._created) {
     appWindow.emit("notification-add", { type: "Error", origin: "Config", msg: "Config file could not be loaded!" });
-  }
-  // Authenticate the discord client using the stored token
-  if (appConfig.discordEnabled && appConfig.discordToken) {
-    await invoke("discord_authenticate", { token: appConfig.discordToken })
-      .then(() => appWindow.emit("instant-notification-add", { type: "Info", origin: "Discord", msg: "Discord Login Successful!" }))
-      .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "Discord Login", msg: err }));
   }
 });
 </script>
@@ -241,6 +231,16 @@ button:disabled,
 .v-enter-from,
 .v-leave-to {
   opacity: 0;
+}
+
+/* Context menus styling */
+.p-contextmenu {
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-accent);
+}
+
+.p-menuitem-icon {
+  color: var(--color-text);
 }
 
 @keyframes icon-loading-anim {

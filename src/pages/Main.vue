@@ -3,6 +3,7 @@ import { ref, computed, onBeforeMount } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { appWindow } from "@tauri-apps/api/window";
 import { open, confirm } from "@tauri-apps/api/dialog";
+import ContextMenu from "primevue/contextmenu";
 import { isEqual, remove as loRemove } from "lodash";
 import { IconSearch, IconExternalLink, IconCloudDownload, IconPointFilled, IconLoader2, IconFolder, IconTagStarred, IconTag, IconDeviceFloppy, IconProgress, IconProgressAlert, IconProgressBolt, IconProgressHelp, IconProgressCheck, IconMusic, IconFile, IconRestore } from "@tabler/icons-vue";
 
@@ -45,6 +46,20 @@ const tagsFetchingOrSavingEnabled = computed(() => {
 const tagsNeedSave = computed(() => {
   return dzrsTrackObjects.value.find((t) => !isEqual(t.tags, t.tagsToSave)) ? true : false;
 });
+
+// Context Menus (right click)
+const menuFile = ref();
+const menuFileItems = ref([
+  { label: "Save", icon: "pi pi-save", command: saveModifiedTracks },
+  { label: "Delete", icon: "pi pi-trash", command: deleteTracks, shortcut: "Del" },
+]);
+
+async function onMenuFile(e, file) {
+  if (!selectedFilePaths.value.includes(file.filePath)) {
+    selectedFilePaths.value = [file.filePath];
+  }
+  menuFile.value.show(e);
+}
 
 // Obtain track objects currently loaded in the backend, all tracks will be loaded without providing paths
 // this operation needs to be manually called after invoking manipulating commands over the track objects in the backend
@@ -226,6 +241,18 @@ async function saveModifiedTracks() {
   }
 }
 
+// Deletes files based on selection
+async function deleteTracks() {
+  const confirmation = await confirm("Delete selected files?", { title: "Delete", type: "warning" });
+  if (confirmation) {
+    tagsIsFetchingOrSaving.value = true;
+    let files = [...selectedFilePaths.value];
+    await invoke("delete_files", { paths: files }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "deleteTracks", msg: err }));
+    await getDzrsTrackObjects(files, true);
+    tagsIsFetchingOrSaving.value = false;
+  }
+}
+
 // Starts listening to the file watcher initialized in the backend
 // for every event we send the appropriate request to the backend for syncronizing the
 // inner DzrsTrackObjects stored in memory to match the files
@@ -312,7 +339,7 @@ onBeforeMount(async () => {
             </thead>
             <tbody v-show="!tracksIsLoading">
               <template v-for="file in dzrsTrackObjects" :key="file.filePath">
-                <tr @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath), 'greyed-file': file.fileExtension !== 'flac' }">
+                <tr @contextmenu="(e) => onMenuFile(e, file)" @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath), 'greyed-file': file.fileExtension !== 'flac' }">
                   <td>
                     <IconPointFilled v-if="!isEqual(file.tags, file.tagsToSave)" />
                   </td>
@@ -856,6 +883,9 @@ onBeforeMount(async () => {
       </div>
     </div>
   </div>
+
+  <!-- Context Menus -->
+  <ContextMenu ref="menuFile" :model="menuFileItems" />
 </template>
 
 <style scoped>

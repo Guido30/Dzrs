@@ -2,19 +2,15 @@
     <img src="images/PreviewLogo.png" width=150px/>
 </p>
 
-### DISCLAIMER: Currently work in progress, while downloading works (when slavart decides to fix their backend, for now use slavartdl), tagging still needs some work, and overall a lot of features need to be added/fixed.
+> [!NOTE]
+> Work in Progress - Main functionality is done but lacks performance optimizations and bug fixes
 
-## Features
+## Description
 
-- **Download High-Quality Tracks**: Utilizes the Slavart API to download tracks in FLAC format.
+If you have a local library of songs in FLAC format and want to update their tags using the deezer database tags (which i find to be pretty minimal and clutter free) then this program can do that.
 
-- **Tag Management**: View and edit metadata tags of FLAC files.
-
-- **Deezer Integration**: Retrieve tags from Deezer using their API.
-
-## Getting Started
-
-Head over to the [releases](https://github.com/Guido30/Dzrs/releases) page and download the installer.
+Dzrs is a FLAC metadata editor, mainly focused on retrieving tags from deezer and applying them to songs, public api and undocumented deezer endpoints are used for retrieving tags, the undocumented endpoints contains lyrics which are not available through their public api.  
+Manually editing the tags also works but you are limited to only editing tags already present in the files, and cannot add new ones
 
 ## Preview
 
@@ -24,15 +20,16 @@ Head over to the [releases](https://github.com/Guido30/Dzrs/releases) page and d
 <p align="center">
     <img src="images/Preview2.png"/>
 </p>
-<p align="center">
-    <img src="images/Preview3.png"/>
-</p>
+
+## Getting Started
+
+You can download the platform based installer on the [releases](https://github.com/Guido30/Dzrs/releases) page.
 
 ## Notice
 
-Dzrs is a personal project, and while im happy to develop it, future updates and mantainance might not be guaranteed.  
-If slavart decides to shut down their api or if it goes down one day, downloading tracks wont be a thing anymore.  
-So feel free to open an issue or fork the project it ever stops working.
+The linux and mac versions have not been tested!  
+If you encounter any problems open an issue.  
+Dzrs is a personal project, future updates and mantainance might stop at any time.
 
 ## License
 

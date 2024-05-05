@@ -2,23 +2,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
-mod libs;
-mod models;
 mod types;
 
 use crate::config::DzrsConfiguration;
-use crate::libs::discord::{DiscordClient, DiscordEventHandler};
-use crate::models::slavart::Search;
 use crate::types::files::{self, DzrsTrackObject, DzrsTrackObjectTagState, DzrsTrackObjectWrapper};
-use crate::types::slavart::SlavartDownloadItems;
 use crate::types::tags::{DeezerTagger, DzrsTrackObjectTags};
 
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use regex::Regex;
 use std::env;
 use std::env::consts::OS;
-use std::fs::File;
-use std::io::Write;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -67,95 +60,6 @@ pub fn browse<P: AsRef<Path>>(path: P) -> Result<(), String> {
         Ok(_) => Ok(()),
         Err(err) => Err(err.to_string()),
     }
-}
-
-// Downloads a track from slavart api into a file
-async fn d_slavart_api(id: u64, filename: &str, directory: &str, overwrite: bool) -> Result<(), String> {
-    let url = format!("https://slavart-api.gamesdrive.net/api/download/track?id={id}");
-    let file_path = PathBuf::from(directory).join(format!("{}.flac", filename));
-    if file_path.exists() && !overwrite {
-        return Err(format!(
-            "File {:?} already exists",
-            file_path.file_name().unwrap_or_default()
-        ));
-    }
-    let response = reqwest::get(&url).await.map_err(|err| err.to_string())?;
-    if !response.status().is_success() {
-        return Err(format!("Error {} for {}", response.status().as_str(), url));
-    }
-    let (content_length, bytes) = (
-        response.content_length().unwrap_or_default(),
-        response.bytes().await.unwrap(),
-    );
-    let res_length = bytes.len();
-    if content_length != res_length as u64 || res_length <= 1024 {
-        return Err(format!("Download failed, received {} / {} bytes", res_length, content_length).into());
-    };
-    let mut file = File::create(file_path).map_err(|err| err.to_string())?;
-    let bytes: Vec<u8> = bytes.into();
-    file.write_all(&bytes).map_err(|err| err.to_string())?;
-    Ok(())
-}
-
-// Downloads a track using the discord api and an account that has access to the slavart server
-async fn d_discord() -> Result<(), String> {
-    Err("Discord download not implemented yet!".into())
-}
-
-// Downloads a track using the slavartdl cli
-async fn d_slavartdl(id: u64, cli_path: &str) -> Result<(), String> {
-    let url = format!("https://open.qobuz.com/track/{id}");
-    let mut cmd = Command::new(cli_path);
-
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // No console window
-    }
-
-    let cmd = cmd.args(["download", &url]).output().map_err(|err| err.to_string())?;
-
-    if !cmd.status.success() {
-        let err = String::from_utf8(cmd.stderr).map_err(|err| err.to_string())?;
-        Err(err)
-    } else {
-        Ok(())
-    }
-}
-
-// Logs in using the discord api and retrieves the user token
-#[tauri::command]
-async fn discord_token(
-    email: Option<String>,
-    password: Option<String>,
-    discord: State<'_, async_mutex::Mutex<DiscordClient>>,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<String, String> {
-    let conf = configuration.lock().unwrap().parsed();
-
-    let email = email.unwrap_or(conf.discord_email);
-    let password = password.unwrap_or(conf.discord_password);
-
-    discord.lock().await.token(email, password).await
-}
-
-// Initializes the discord serenity client as an authenticated user using the token
-#[tauri::command]
-async fn discord_authenticate(
-    token: Option<String>,
-    discord: State<'_, async_mutex::Mutex<DiscordClient>>,
-    configuration: State<'_, Mutex<DzrsConfiguration>>,
-) -> Result<(), String> {
-    let conf = configuration.lock().unwrap().parsed();
-
-    let token = token.unwrap_or(conf.discord_token);
-    let channel_id = conf.discord_channel_id;
-    let bot_id = conf.discord_bot_id;
-
-    let handler = DiscordEventHandler::new(&channel_id, &bot_id);
-    let mut guard = discord.lock().await;
-    guard.authenticate(&token, handler).await?;
-    guard.start()
 }
 
 // Commands for manipulating the inner DzrsTrackObjectWrapper from front-end
@@ -500,11 +404,20 @@ async fn save_tags(
     config: State<'_, Mutex<DzrsConfiguration>>,
 ) -> Result<(), String> {
     let conf = config.lock().unwrap().parsed();
+    let mut errors: Vec<String> = Vec::new();
     // Save tags into the flac
     files::save_tags(&path, &tags, &conf)?;
     // Update the loaded track to match the saved file
     let mut track_ = DzrsTrackObject::new(&path)?;
     track_.load_tags(&conf)?;
+    if conf.directory_move_on_save && !conf.directory_output.is_empty() {
+        let tr_file_name = Path::new(&track_.file_path).file_name().unwrap_or_default();
+        let mut new_path = PathBuf::from(conf.directory_output);
+        new_path.push(tr_file_name);
+        if let Err(e) = std::fs::rename(&track_.file_path, new_path) {
+            errors.push(e.to_string())
+        };
+    }
     let mut t = tracks.lock().unwrap();
     let tr = match t.get_track_obj_mut(&path) {
         Some(tr) => tr,
@@ -514,67 +427,27 @@ async fn save_tags(
     tr.tags_pictures = track_.tags_pictures;
     tr.tags_to_save = track_.tags_to_save;
     tr.tags_status = DzrsTrackObjectTagState::Finalized;
-    Ok(())
-}
-
-#[tauri::command]
-async fn get_slavart_tracks(query: String) -> Result<SlavartDownloadItems, String> {
-    let response = reqwest::get(format!("https://slavart.gamesdrive.net/api/search?q={query}")).await;
-    match response {
-        Ok(r) => {
-            let body = r.text().await;
-            match body {
-                Ok(b) => {
-                    let search: Result<Search, serde_json::Error> = serde_json::from_str(b.as_str());
-                    match search {
-                        Ok(s) => {
-                            let tracks = SlavartDownloadItems::from(s);
-                            Ok(tracks)
-                        }
-                        Err(err) => return Err(err.to_string()),
-                    }
-                }
-                Err(err) => return Err(err.to_string()),
-            }
-        }
-        Err(err) => return Err(err.to_string()),
+    if !errors.is_empty() {
+        Err(errors.join("\n"))
+    } else {
+        Ok(())
     }
 }
 
-// Downloads a track from a given qobuz id, the download is made using all enabled download methods
-// in order until one is successful, the order for now is Slavart Api (Always enabled) -> Discord (currently not implemented) -> SlavartDL
+// Deletes files from given paths
 #[tauri::command]
-async fn download_track(id: u64, filename: String, config: State<'_, Mutex<DzrsConfiguration>>) -> Result<(), String> {
-    let mut tries = 1;
-    let mut errors = Vec::new();
-    let conf = config.lock().unwrap().parsed();
-    let (dir, overwrite, slavartdl_path) = (conf.download_path, conf.overwrite_downloads, conf.slavartdl_path);
-
-    // Slavart API (Always Enabled)
-    match d_slavart_api(id, &filename, &dir, overwrite).await {
-        Ok(_) => return Ok(()),
-        Err(err) => errors.push(err),
-    };
-
-    // Discord
-    if conf.discord_enabled {
-        tries += 1;
-        match d_discord().await {
-            Ok(_) => return Ok(()),
-            Err(err) => errors.push(err),
+async fn delete_files(paths: Vec<String>, tracks: State<'_, Mutex<DzrsTrackObjectWrapper>>) -> Result<(), String> {
+    let mut t = tracks.lock().unwrap();
+    let mut errors: Vec<String> = Vec::new();
+    for p in paths {
+        if let Err(e) = t.remove_track(&p) {
+            errors.push(e)
+        };
+        if let Err(e) = std::fs::remove_file(p) {
+            errors.push(e.to_string())
         };
     }
-
-    // SlavartDL
-    if conf.slavartdl_enabled {
-        tries += 1;
-        match d_slavartdl(id, &slavartdl_path).await {
-            Ok(_) => return Ok(()),
-            Err(err) => errors.push(err),
-        };
-    };
-
-    if errors.len() == tries {
+    if !errors.is_empty() {
         Err(errors.join("\n"))
     } else {
         Ok(())
@@ -603,7 +476,9 @@ async fn watch_dir(
             Err(err) => return Err(err.to_string()),
         };
 
-    w.watch(Path::new(&dir), RecursiveMode::NonRecursive).unwrap();
+    if let Err(err) = w.watch(Path::new(&dir), RecursiveMode::NonRecursive) {
+        return Err(format!("Error watching {dir}, {err}"));
+    };
 
     let mut guard = watcher.lock().unwrap();
     *guard = Some(w);
@@ -627,7 +502,6 @@ fn main() {
     let config: Mutex<DzrsConfiguration> = Mutex::new(DzrsConfiguration::load(config_path));
     let tracks_obj: Mutex<DzrsTrackObjectWrapper> = Mutex::new(DzrsTrackObjectWrapper::default());
     let tagger: DeezerTagger = DeezerTagger::new();
-    let discord: async_mutex::Mutex<DiscordClient> = async_mutex::Mutex::new(DiscordClient::new());
     let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
     tauri::Builder::default()
@@ -642,11 +516,8 @@ fn main() {
         .manage(config)
         .manage(tracks_obj)
         .manage(tagger)
-        .manage(discord)
         .manage(watcher.clone())
         .invoke_handler(tauri::generate_handler![
-            discord_token,
-            discord_authenticate,
             tracks_clear,
             tracks_replace,
             tracks_insert,
@@ -662,8 +533,7 @@ fn main() {
             tracks_source,
             tracks_reload,
             save_tags,
-            get_slavart_tracks,
-            download_track,
+            delete_files,
             watch_dir,
             browse_cmd,
         ])

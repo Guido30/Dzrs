@@ -6,6 +6,7 @@ use deezerapi_rs::Deezer;
 use lofty::ogg::VorbisComments;
 use lofty::Accessor;
 use lofty::{Picture, PictureInformation};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -286,7 +287,15 @@ impl DzrsTrackObjectTags {
 
         if let Some(t) = payload.track {
             if conf.tag_dz_title {
-                self.title = t.title;
+                if conf.tag_remove_feat_title {
+                    // Removing (feat. ArtistName) from title
+                    let re = Regex::new(r"\(feat\.?\s*[^\)]*\)").unwrap();
+                    let _t = t.title.clone();
+                    let new_t = re.replace_all(&_t, "").to_string();
+                    self.title = new_t;
+                } else {
+                    self.title = t.title;
+                }
             };
             if conf.tag_dz_album {
                 self.album = t.album.title;

@@ -18,6 +18,8 @@ pub struct DzrsConfiguration {
     pub file_template: String,
     pub overwrite_downloads: String,
     pub directory_view_path: String,
+    pub directory_output: String,
+    pub directory_move_on_save: String,
     pub discord_enabled: String,
     pub discord_token: String,
     pub discord_email: String,
@@ -72,6 +74,7 @@ pub struct DzrsConfiguration {
     pub tag_date_as_year: String,
     pub tag_originaldate_as_year: String,
     pub tag_clear_extra_tags: String,
+    pub tag_remove_feat_title: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -83,6 +86,8 @@ pub struct DzrsConfigurationParsed {
     pub file_template: String,
     pub overwrite_downloads: bool,
     pub directory_view_path: String,
+    pub directory_output: String,
+    pub directory_move_on_save: bool,
     pub discord_enabled: bool,
     pub discord_token: String,
     pub discord_email: String,
@@ -137,6 +142,7 @@ pub struct DzrsConfigurationParsed {
     pub tag_date_as_year: bool,
     pub tag_originaldate_as_year: bool,
     pub tag_clear_extra_tags: bool,
+    pub tag_remove_feat_title: bool,
 }
 
 impl DzrsConfiguration {
@@ -176,6 +182,8 @@ impl DzrsConfiguration {
             "file_template" => self.file_template = value,
             "overwrite_downloads" => self.overwrite_downloads = value,
             "directory_view_path" => self.directory_view_path = value,
+            "directory_output" => self.directory_output = value,
+            "directory_move_on_save" => self.directory_move_on_save = value,
             "discord_enabled" => self.discord_enabled = value,
             "discord_token" => self.discord_token = value,
             "discord_email" => self.discord_email = value,
@@ -230,6 +238,7 @@ impl DzrsConfiguration {
             "tag_date_as_year" => self.tag_date_as_year = value,
             "tag_originaldate_as_year" => self.tag_originaldate_as_year = value,
             "tag_clear_extra_tags" => self.tag_clear_extra_tags = value,
+            "tag_remove_feat_title" => self.tag_remove_feat_title = value,
             _ => (),
         }
     }
@@ -250,6 +259,8 @@ impl DzrsConfiguration {
             file_template: self.file_template.clone(),
             overwrite_downloads: self.overwrite_downloads.parse().unwrap_or(true),
             directory_view_path: self.directory_view_path.clone(),
+            directory_output: self.directory_output.clone(),
+            directory_move_on_save: self.directory_move_on_save.parse().unwrap_or(false),
             discord_enabled: self.discord_enabled.parse().unwrap_or(false),
             discord_token: self.discord_token.clone(),
             discord_email: self.discord_email.clone(),
@@ -304,6 +315,7 @@ impl DzrsConfiguration {
             tag_date_as_year: self.tag_date_as_year.parse().unwrap_or(true),
             tag_originaldate_as_year: self.tag_originaldate_as_year.parse().unwrap_or(true),
             tag_clear_extra_tags: self.tag_clear_extra_tags.parse().unwrap_or(false),
+            tag_remove_feat_title: self.tag_remove_feat_title.parse().unwrap_or(true),
         }
     }
 }
@@ -328,6 +340,8 @@ impl Default for DzrsConfiguration {
             file_template: "%title% - %album%".into(),
             overwrite_downloads: "true".into(),
             directory_view_path: audio_path,
+            directory_output: "".into(),
+            directory_move_on_save: "false".into(),
             discord_enabled: "false".into(),
             discord_token: "".into(),
             discord_email: "".into(),
@@ -382,6 +396,7 @@ impl Default for DzrsConfiguration {
             tag_date_as_year: "true".into(),
             tag_originaldate_as_year: "true".into(),
             tag_clear_extra_tags: "false".into(),
+            tag_remove_feat_title: "true".into(),
         }
     }
 }

@@ -1,90 +1,18 @@
 <script setup>
-import { IconNotes, IconBrandStorybook, IconBrandDiscordFilled, IconFolder, IconWorldDownload, IconTextSize, IconCheck, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
+import { IconNotes, IconFolder, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
 
-import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import { appWindow } from "@tauri-apps/api/window";
-import { downloadDir, homeDir } from "@tauri-apps/api/path";
-import { writeText } from "@tauri-apps/api/clipboard";
-import { camelCase } from "lodash";
 
 import SettingsGroup from "../components/SettingsGroup.vue";
 import HeaderBar from "../components/HeaderBar.vue";
 
-import { appConfig, filterColumnsDownload, tagSeparators } from "../globals";
-
-const fileTemplateInput = ref(null);
-
-async function discordLogin() {
-  if (appConfig.discordStoreCredentials) {
-    await updateBackendConfig("discord_email", appConfig.discordEmail);
-    await updateBackendConfig("discord_password", appConfig.discordPassword);
-  } else {
-    await updateBackendConfig("discord_email", "");
-    await updateBackendConfig("discord_password", "");
-  }
-  if (appConfig.discordEmail && appConfig.discordPassword) {
-    const token = await invoke("discord_token", { email: appConfig.discordEmail, password: appConfig.discordPassword })
-      .then((t) => t)
-      .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "Discord", msg: err }));
-    if (token) {
-      await updateConfig("discord_token", token);
-      await invoke("discord_authenticate", { token: token })
-        .then(() => appWindow.emit("instant-notification-add", { type: "Info", origin: "Discord", msg: "Discord Login Successfull!" }))
-        .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "Discord", msg: err }));
-    }
-  }
-}
-
-async function setDownloadPath() {
-  const defaultPath = await downloadDir()
-    .then((result) => result)
-    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
-  const path = await open({ defaultPath: defaultPath, directory: true, multiple: false })
-    .then((result) => result)
-    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
-  if (path !== null) {
-    await invoke("config_set", { key: "download_path", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setDownloadPath", msg: err }));
-    appConfig.downloadPath = path;
-    appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
-  }
-}
-
-async function setSlavartdlPath() {
-  const defaultPath = await homeDir()
-    .then((result) => result)
-    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setSlavartdlPath", msg: err }));
-  const path = await open({ defaultPath: defaultPath, directory: false, multiple: false })
-    .then((result) => result)
-    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setSlavartdlPath", msg: err }));
-  if (path !== null) {
-    await invoke("config_set", { key: "slavartdl_path", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setSlavartdlPath", msg: err }));
-    appConfig.slavartdlPath = path;
-    appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
-  }
-}
-
-async function saveFileTemplate() {
-  await invoke("config_set", { key: "file_template", value: fileTemplateInput.value.value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "saveFileTemplate", msg: err }));
-  appConfig.fileTemplate = fileTemplateInput.value.value;
-  appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
-}
+import { appConfig, tagSeparators } from "../globals";
 
 // Updates a single config entry in backend ONLY, the underlying command will persist the change into the config file
 async function updateBackendConfig(key, value) {
   await invoke("config_set", { key: key, value: value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "updateBackendConfig", msg: err }));
-}
-
-// Updates a single config entry in both backend and frontend, the underlying command will persist the change into the config file
-async function updateConfig(key, value) {
-  await invoke("config_set", { key: key, value: value }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "updateConfig", msg: err }));
-  appConfig[camelCase(key)] = value;
-}
-
-// Copies to the clipboard the clicked element's innerHTML
-async function copyEventTargetToClipboard(event) {
-  await writeText(event.target.innerHTML).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "copyEventTargetToClipboard", msg: err }));
 }
 
 async function setLocalFilesPath() {
@@ -98,15 +26,14 @@ async function setLocalFilesPath() {
   }
 }
 
-function downloadSourceToggleStyle(e) {
-  const groupEl = e.target.parentNode.nextElementSibling;
-  const spanEl = e.target.nextElementSibling;
-  if (e.target.checked) {
-    groupEl.classList.remove("disabled-el");
-    spanEl.innerHTML = "Enabled";
-  } else {
-    groupEl.classList.add("disabled-el");
-    spanEl.innerHTML = "Disabled";
+async function setOutputPath() {
+  const path = await open({ directory: true, multiple: false })
+    .then((result) => result)
+    .catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setOutputPath", msg: err }));
+  if (path !== null) {
+    await invoke("config_set", { key: "directory_output", value: path }).catch((err) => appWindow.emit("notification-add", { type: "Error", origin: "setOutputPath", msg: err }));
+    appConfig.directoryOutput = path;
+    appWindow.emit("instant-notification-add", { type: "Info", origin: "Settings", msg: "Setting Updated!" });
   }
 }
 </script>
@@ -124,120 +51,6 @@ function downloadSourceToggleStyle(e) {
   </HeaderBar>
   <div class="container" style="overflow-y: auto">
     <div class="column">
-      <SettingsGroup :body-as-column="true" class="group-download">
-        <template #head>
-          <IconWorldDownload size="30" class="icon setting-icon" />
-          <h1>Download</h1>
-        </template>
-        <template #body>
-          <div class="row" style="margin-bottom: 5px">
-            <p style="margin: auto 0px; flex-basis: 150px">Download Path</p>
-            <input :value="appConfig.downloadPath" type="text" placeholder="Open..." style="flex-grow: 1" />
-            <button style="margin-left: 15px" @click="setDownloadPath">
-              <IconFolder size="18px" class="icon clickable-effect" />
-            </button>
-          </div>
-          <p style="font-size: 1.3em; text-align: left; margin-bottom: 0px">Alternative Downloading Methods</p>
-          <div class="discord-div column">
-            <div class="row" style="position: absolute; left: 0px; top: 0px; margin: 15px; z-index: 1">
-              <input
-                type="checkbox"
-                class="checkbox"
-                style="height: 20px"
-                @input="
-                  (e) => {
-                    updateBackendConfig('discord_enabled', String(e.target.checked));
-                    downloadSourceToggleStyle(e);
-                  }
-                "
-                :checked="appConfig.discordEnabled" />
-              <span style="font-style: italic; font-size: 1.2em">{{ appConfig.discordEnabled ? "Enabled" : "Disabled" }}</span>
-            </div>
-            <div class="column" :class="{ 'disabled-el': !appConfig.discordEnabled }">
-              <div class="row" style="font-size: 1.5em; margin-bottom: 4px">
-                <IconBrandDiscordFilled class="icon" size="30px" />
-                <p style="margin: auto 0px; padding-left: 5px">Discord (NOT IMPLEMENTED)</p>
-              </div>
-              <div class="row" style="gap: 10px; margin-top: 5px">
-                <input type="text" style="flex-grow: 1" placeholder="..." :value="appConfig.discordToken" readonly />
-                <button @click="updateConfig('discord_token', '')">Clear Token</button>
-              </div>
-              <div class="row" style="justify-content: space-between; gap: 10px">
-                <form class="form column">
-                  <p style="text-align: center; font-size: 1.2em; margin-bottom: 5px; margin-right: 0px">Login</p>
-                  <input type="email" placeholder="Email..." v-model="appConfig.discordEmail" />
-                  <input type="password" placeholder="Password..." v-model="appConfig.discordPassword" />
-                  <div class="row" style="justify-content: space-between">
-                    <div class="row">
-                      <input style="height: 15px" @input="(e) => updateBackendConfig('discord_store_credentials', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.discordStoreCredentials" />
-                      <span style="margin-left: 8px; margin-top: auto; margin-bottom: auto">Store credentials unencrypted</span>
-                    </div>
-                    <div class="row">
-                      <button type="submit" @click.prevent="discordLogin">Refresh</button>
-                    </div>
-                  </div>
-                </form>
-                <div class="row" style="flex-grow: 1; padding-right: 30px">
-                  <div class="column" style="justify-content: start; flex-grow: 1; margin-top: 15px">
-                    <p style="text-align: center; font-size: 1.2em; margin-bottom: 5px; margin-right: 0px; margin-top: 0px">Discord IDS</p>
-                    <div class="row" style="margin-bottom: 5px; gap: 5px">
-                      <p style="margin: auto 0px; flex-basis: 80px">Channel ID</p>
-                      <input type="text" style="flex-grow: 1" placeholder="..." v-model="appConfig.discordChannelId" />
-                    </div>
-                    <div class="row" style="gap: 5px; margin-bottom: 5px">
-                      <p style="margin: auto 0px; flex-basis: 80px">Bot ID</p>
-                      <input type="text" style="flex-grow: 1" placeholder="..." v-model="appConfig.discordBotId" />
-                    </div>
-                    <div class="row" style="justify-content: end">
-                      <button
-                        @click="
-                          updateBackendConfig('discord_channel_id', String(appConfig.discordChannelId));
-                          updateBackendConfig('discord_bot_id', String(appConfig.discordBotId));
-                          appWindow.emit('instant-notification-add', { type: 'Info', origin: 'Settings', msg: 'Setting Updated!' });
-                        ">
-                        Save Ids
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <p style="font-style: italic">Note: Its recommended to use a secondary account and join only the slavart server</p>
-            </div>
-          </div>
-          <div class="slavartdl-div column">
-            <div class="row" style="position: absolute; left: 0px; top: 0px; margin: 15px; z-index: 1">
-              <input
-                type="checkbox"
-                class="checkbox"
-                style="height: 20px"
-                @input="
-                  (e) => {
-                    updateBackendConfig('slavartdl_enabled', String(e.target.checked));
-                    downloadSourceToggleStyle(e);
-                  }
-                "
-                :checked="appConfig.slavartdlEnabled" />
-              <span style="font-style: italic; font-size: 1.2em">{{ appConfig.slavartdlEnabled ? "Enabled" : "Disabled" }}</span>
-            </div>
-            <div class="column" :class="{ 'disabled-el': !appConfig.slavartdlEnabled }">
-              <div class="row" style="font-size: 1.5em; margin-bottom: 4px">
-                <IconBrandStorybook class="icon" size="30px" />
-                <p style="margin: auto 0px; padding-left: 5px">SlavartDL</p>
-              </div>
-              <div>
-                <div class="row" style="margin-top: 5px">
-                  <p style="margin: auto 0px; flex-basis: 150px">SlavartDL Path</p>
-                  <input :value="appConfig.slavartdlPath" type="text" placeholder="Select..." style="flex-grow: 1" />
-                  <button style="margin-left: 15px" @click="setSlavartdlPath">
-                    <IconFolder size="18px" class="icon clickable-effect" />
-                  </button>
-                </div>
-                <p style="font-style: italic">Note: SlavartDL needs to be manually configured!</p>
-              </div>
-            </div>
-          </div>
-        </template>
-      </SettingsGroup>
       <SettingsGroup :body-as-column="true" class="group-local-files">
         <template #head>
           <IconFileFilled size="30" class="icon setting-icon" />
@@ -251,26 +64,12 @@ function downloadSourceToggleStyle(e) {
               <IconFolder size="20px" class="icon clickable-effect" />
             </button>
           </div>
-        </template>
-      </SettingsGroup>
-      <SettingsGroup :body-as-column="true" class="group-file-template">
-        <template #head>
-          <IconTextSize size="30" class="icon setting-icon" />
-          <h1>File Template</h1>
-        </template>
-        <template #body>
-          <p style="font-size: 1em">Downloaded files will be saved with the following name</p>
-          <div class="row">
-            <input style="flex-grow: 1" type="text" spellcheck="false" placeholder="File name template..." :value="appConfig.fileTemplate" ref="fileTemplateInput" />
-            <button @click.prevent="saveFileTemplate" style="margin-left: 10px">
-              <IconCheck size="18px" class="icon clickable-effect" />
+          <div class="row" style="margin-top: 10px">
+            <p style="margin: auto 0px; flex-basis: 150px">Output Directory</p>
+            <input :value="appConfig.directoryOutput" type="text" placeholder="Open..." style="flex-grow: 1" />
+            <button style="margin-left: 15px" @click="setOutputPath">
+              <IconFolder size="20px" class="icon clickable-effect" />
             </button>
-          </div>
-          <div class="row" style="margin-top: 10px; padding-left: 10px; padding-right: 10px; justify-content: flex-start; flex-wrap: wrap">
-            <p>Available Variables:</p>
-            <p v-for="item in filterColumnsDownload" :key="item.id" class="clickable-effect" v-tooltip="{ content: 'Copied!', triggers: ['click'], hideTriggers: ['hover'] }" @click="copyEventTargetToClipboard">
-              {{ `%${item.key}%` }}
-            </p>
           </div>
         </template>
       </SettingsGroup>
@@ -439,6 +238,14 @@ function downloadSourceToggleStyle(e) {
               <input @input="(e) => updateBackendConfig('tag_clear_extra_tags', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagClearExtraTags" />
               <span style="margin-left: 8px">Remove all Extra Tags when saving files</span>
             </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateBackendConfig('directory_move_on_save', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.directoryMoveOnSave" />
+              <span style="margin-left: 8px">Move Saved Files to Output Directory</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateBackendConfig('tag_remove_feat_title', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagRemoveFeatTitle" />
+              <span style="margin-left: 8px">Remove featured artist in the title from retireved tags</span>
+            </div>
           </div>
           <div class="frame" style="padding: 15px">
             <p style="text-align: start; margin-bottom: 10px; margin-top: 0px">Add Padding to the Following Tags:</p>
@@ -487,63 +294,11 @@ h1 {
 }
 
 input {
-  height: 1.7em;
   padding: 0.2em 1em;
 }
 
 button {
   padding: 0.2em 1em;
-}
-
-.group-download p {
-  text-align: left;
-}
-
-.group-download .discord-div,
-.group-download .slavartdl-div {
-  position: relative;
-  border-radius: 20px;
-  margin: 20px;
-  padding: 10px 20px;
-  box-shadow: 6px 6px 5px var(--color-shadow);
-}
-
-.group-download .discord-div {
-  background-color: #383fa188;
-}
-
-.group-download .slavartdl-div {
-  background-color: #41425288;
-}
-
-.group-download .discord-div input,
-.group-download .discord-div button {
-  background-color: #10122e88;
-}
-
-.group-download .discord-div input:focus,
-.group-download .discord-div button:hover {
-  outline: none !important;
-  border: 1px solid #515fff88;
-}
-
-.group-download .discord-div .form {
-  width: 50%;
-  margin: 0px;
-  margin-top: 10px;
-}
-
-.group-download .discord-div .form p {
-  min-width: 100px;
-  margin-top: auto;
-  margin-bottom: auto;
-  margin-left: 0px;
-  margin-right: 8px;
-}
-
-.group-download .discord-div .form input {
-  flex-grow: 1;
-  margin-bottom: 5px;
 }
 
 .group-file-template p {
