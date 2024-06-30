@@ -1,6 +1,6 @@
 [package]
 name = "dzrs"
-version = "0.1.7"
+version = "0.1.8"
 description = "Dzrs"
 authors = ["Guido30"]
 license = "MIT"
@@ -38,3 +38,6 @@ deezerapi-rs = { git = "https://github.com/Guido30/DeezerApi-RS.git", branch = "
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+lto = "fat"
