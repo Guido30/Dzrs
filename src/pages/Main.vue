@@ -131,46 +131,46 @@ async function changeFilesDir() {
 // Keeps selectedFilePaths updated based on which files have been selected on the local files panel
 // this function supports selecting files using CTRL and SHIFT keys
 function selectFiles(event, file) {
-  if (event.shiftKey) {
-    let indexStart;
-    if (selectedFilePaths.value.length >= 1) {
-      const _filePath = selectedFilePaths.value[selectedFilePaths.value.length - 1];
-      const _i = dzrsTrackObjects.value.findIndex((_file) => _file.filePath === _filePath);
-      indexStart = _i;
-    } else {
-      indexStart = 0;
-    }
-    const indexEnd = dzrsTrackObjects.value.indexOf(file);
-    if (indexStart < indexEnd) {
-      for (let i = indexStart + 1; i <= indexEnd; i++) {
-        const _filePath = dzrsTrackObjects.value[i].filePath;
-        if (selectedFilePaths.value.includes(_filePath)) {
-          const _i = selectedFilePaths.value.indexOf(_filePath);
-          selectedFilePaths.value.splice(_i, 1);
-        } else {
-          selectedFilePaths.value.push(_filePath);
-        }
-      }
-    } else {
-      for (let i = indexStart - 1; i >= indexEnd; i--) {
-        const _filePath = dzrsTrackObjects.value[i].filePath;
-        if (selectedFilePaths.value.includes(_filePath)) {
-          const _i = selectedFilePaths.value.indexOf(_filePath);
-          selectedFilePaths.value.splice(_i, 1);
-        } else {
-          selectedFilePaths.value.push(_filePath);
-        }
+  if (event.type === "keyup") {
+    if (event.key === "ArrowUp" && event.ctrlKey) {
+      const i = dzrsTrackObjects.value.indexOf(activeDzrsTrackObject.value);
+      if (i > 0) {
+        selectedFilePaths.value = [dzrsTrackObjects.value[i - 1].filePath];
       }
     }
-  } else if (event.ctrlKey) {
-    if (selectedFilePaths.value.includes(file.filePath)) {
-      let i = selectedFilePaths.value.indexOf(file.filePath);
-      selectedFilePaths.value.splice(i, 1);
-    } else {
-      selectedFilePaths.value.push(file.filePath);
+    if (event.key === "ArrowDown" && event.ctrlKey) {
+      const i = dzrsTrackObjects.value.indexOf(activeDzrsTrackObject.value);
+      if (i < dzrsTrackObjects.value.length - 1) {
+        selectedFilePaths.value = [dzrsTrackObjects.value[i + 1].filePath];
+      }
     }
-  } else {
-    selectedFilePaths.value = [file.filePath];
+  }
+  if (event.type === "click") {
+    if (event.shiftKey) {
+      let indexStart;
+      if (selectedFilePaths.value.length >= 1) {
+        const lastSelectedFile = selectedFilePaths.value[selectedFilePaths.value.length - 1];
+        indexStart = dzrsTrackObjects.value.findIndex((file) => file.filePath === lastSelectedFile);
+      } else {
+        indexStart = dzrsTrackObjects.value.indexOf(file);
+      }
+      const indexEnd = dzrsTrackObjects.value.indexOf(file);
+
+      const [start, end] = indexStart < indexEnd ? [indexStart, indexEnd] : [indexEnd, indexStart];
+      const newSelection = dzrsTrackObjects.value.slice(start, end + 1).map((file) => file.filePath);
+
+      // Merge the new selection with the existing selection
+      selectedFilePaths.value = Array.from(new Set([...selectedFilePaths.value, ...newSelection]));
+    } else if (event.ctrlKey) {
+      if (selectedFilePaths.value.includes(file.filePath)) {
+        const i = selectedFilePaths.value.indexOf(file.filePath);
+        selectedFilePaths.value.splice(i, 1);
+      } else {
+        selectedFilePaths.value.push(file.filePath);
+      }
+    } else {
+      selectedFilePaths.value = [file.filePath];
+    }
   }
 }
 
@@ -339,7 +339,7 @@ onBeforeMount(async () => {
             </thead>
             <tbody v-show="!tracksIsLoading">
               <template v-for="file in dzrsTrackObjects" :key="file.filePath">
-                <tr @contextmenu="(e) => onMenuFile(e, file)" @click="selectFiles($event, file)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath), 'greyed-file': file.fileExtension !== 'flac' }">
+                <tr tabindex="0" @contextmenu="(e) => onMenuFile(e, file)" @click="selectFiles($event, file)" @keyup.ctrl.up="selectFiles($event)" @keyup.ctrl.down="selectFiles($event)" :class="{ 'selected-file': selectedFilePaths.includes(file.filePath), 'greyed-file': file.fileExtension !== 'flac' }">
                   <td>
                     <IconPointFilled v-if="!isEqual(file.tags, file.tagsToSave)" />
                   </td>
@@ -975,6 +975,10 @@ p {
 .directory-panel tbody tr td:last-child {
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
+}
+
+.directory-panel tbody tr:focus {
+  outline: none;
 }
 
 .tags-panel tr td:nth-child(2) {

@@ -1,5 +1,5 @@
 <script setup>
-import { IconNotes, IconFolder, IconFileFilled, IconBookmarksFilled, IconList } from "@tabler/icons-vue";
+import { IconNotes, IconFolder, IconFileFilled, IconBookmarksFilled, IconList, IconTagsFilled } from "@tabler/icons-vue";
 
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
@@ -71,9 +71,41 @@ async function setOutputPath() {
               <IconFolder size="20px" class="icon clickable-effect" />
             </button>
           </div>
+          <div class="frame" style="padding: 15px; margin-top: 15px">
+            <div class="row" style="justify-content: flex-start">
+              <input @input="(e) => updateBackendConfig('directory_move_on_save', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.directoryMoveOnSave" />
+              <span style="margin-left: 8px">Move Saved Files to Output Directory</span>
+            </div>
+          </div>
         </template>
       </SettingsGroup>
       <SettingsGroup :body-as-column="true" class="group-tags">
+        <template #head>
+          <IconTagsFilled size="30" class="icon setting-icon" />
+          <h1>Tags</h1>
+        </template>
+        <template #body>
+          <div class="frame" style="padding: 15px">
+            <div class="row" style="justify-content: flex-start">
+              <input @input="(e) => updateBackendConfig('tag_remove_feat_title', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagRemoveFeatTitle" />
+              <span style="margin-left: 8px">Retrieve TITLE without feat. artists</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateBackendConfig('tag_date_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDateAsYear" />
+              <span style="margin-left: 8px">Retrieve DATE with YYYY format</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateBackendConfig('tag_originaldate_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagOriginaldateAsYear" />
+              <span style="margin-left: 8px">Retrieve ORIGINALDATE with YYYY format</span>
+            </div>
+            <div class="row" style="justify-content: flex-start; margin-top: 10px">
+              <input @input="(e) => updateBackendConfig('tag_prefer_sync_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPreferSyncLyrics" />
+              <span style="margin-left: 8px">Retrieve LYRICS with synchronized timestamps (when available)</span>
+            </div>
+          </div>
+        </template>
+      </SettingsGroup>
+      <SettingsGroup :body-as-column="true" class="group-deezer-tags">
         <template #head>
           <IconBookmarksFilled size="30" class="icon setting-icon" />
           <h1>Deezer Tags</h1>
@@ -214,37 +246,13 @@ async function setOutputPath() {
             </select>
           </div>
           <div class="frame" style="padding: 15px; margin-bottom: 15px">
-            <div class="row" style="justify-content: flex-start">
-              <input @input="(e) => updateBackendConfig('overwrite_downloads', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.overwriteDownloads" />
-              <span style="margin-left: 8px">Overwrite existing files when downloading</span>
-            </div>
-            <div class="row" style="justify-content: flex-start; margin-top: 10px">
-              <input @input="(e) => updateBackendConfig('tag_prefer_sync_lyrics', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagPreferSyncLyrics" />
-              <span style="margin-left: 8px">Prefer synchronized lyrics when available</span>
-            </div>
             <div class="row" style="justify-content: flex-start; margin-top: 10px">
               <input @input="(e) => updateBackendConfig('tag_fetch_with_filename', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagFetchWithFilename" />
               <span style="margin-left: 8px">Use filename for fetching when tags are missing</span>
             </div>
             <div class="row" style="justify-content: flex-start; margin-top: 10px">
-              <input @input="(e) => updateBackendConfig('tag_date_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagDateAsYear" />
-              <span style="margin-left: 8px">Retrieve DATE with YYYY format</span>
-            </div>
-            <div class="row" style="justify-content: flex-start; margin-top: 10px">
-              <input @input="(e) => updateBackendConfig('tag_originaldate_as_year', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagOriginaldateAsYear" />
-              <span style="margin-left: 8px">Retrieve ORIGINALDATE with YYYY format</span>
-            </div>
-            <div class="row" style="justify-content: flex-start; margin-top: 10px">
               <input @input="(e) => updateBackendConfig('tag_clear_extra_tags', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagClearExtraTags" />
               <span style="margin-left: 8px">Remove all Extra Tags when saving files</span>
-            </div>
-            <div class="row" style="justify-content: flex-start; margin-top: 10px">
-              <input @input="(e) => updateBackendConfig('directory_move_on_save', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.directoryMoveOnSave" />
-              <span style="margin-left: 8px">Move Saved Files to Output Directory</span>
-            </div>
-            <div class="row" style="justify-content: flex-start; margin-top: 10px">
-              <input @input="(e) => updateBackendConfig('tag_remove_feat_title', String(e.target.checked))" type="checkbox" class="checkbox" :checked="appConfig.tagRemoveFeatTitle" />
-              <span style="margin-left: 8px">Remove featured artist in the title from retireved tags</span>
             </div>
           </div>
           <div class="frame" style="padding: 15px">
@@ -328,15 +336,15 @@ button {
   text-align: left;
 }
 
-.group-tags .row {
+.group-deezer-tags .row {
   justify-content: flex-start;
 }
 
-.group-tags .column .row {
+.group-deezer-tags .column .row {
   align-items: center;
 }
 
-.group-tags .column .row:not(:first-child) {
+.group-deezer-tags .column .row:not(:first-child) {
   margin-top: 10px;
 }
 

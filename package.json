@@ -14,7 +14,7 @@
     "vue": "^3.3.4"
   },
   "devDependencies": {
-    "@tabler/icons-vue": "^2.31.0",
+    "@tabler/icons-vue": "^3.31.0",
     "@tauri-apps/cli": "^1.4.0",
     "@vitejs/plugin-vue": "^4.2.3",
     "eslint": "^8.55.0",

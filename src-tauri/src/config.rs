@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::Path;
-use tauri::api::path::{audio_dir, download_dir};
+use tauri::api::path::audio_dir;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -14,9 +14,7 @@ pub struct DzrsConfiguration {
     _loaded: bool,
     #[serde(rename = "_created")]
     _created: bool,
-    pub download_path: String,
     pub file_template: String,
-    pub overwrite_downloads: String,
     pub directory_view_path: String,
     pub directory_output: String,
     pub directory_move_on_save: String,
@@ -73,9 +71,7 @@ pub struct DzrsConfigurationParsed {
     _path: String,
     _loaded: bool,
     _created: bool,
-    pub download_path: String,
     pub file_template: String,
-    pub overwrite_downloads: bool,
     pub directory_view_path: String,
     pub directory_output: String,
     pub directory_move_on_save: bool,
@@ -160,9 +156,7 @@ impl DzrsConfiguration {
 
     pub fn update(&mut self, field: String, value: String) {
         match field.as_str() {
-            "download_path" => self.download_path = value,
             "file_template" => self.file_template = value,
-            "overwrite_downloads" => self.overwrite_downloads = value,
             "directory_view_path" => self.directory_view_path = value,
             "directory_output" => self.directory_output = value,
             "directory_move_on_save" => self.directory_move_on_save = value,
@@ -228,9 +222,7 @@ impl DzrsConfiguration {
             _path: self._path.clone(),
             _loaded: self._loaded,
             _created: self._created,
-            download_path: self.download_path.clone(),
             file_template: self.file_template.clone(),
-            overwrite_downloads: self.overwrite_downloads.parse().unwrap_or(true),
             directory_view_path: self.directory_view_path.clone(),
             directory_output: self.directory_output.clone(),
             directory_move_on_save: self.directory_move_on_save.parse().unwrap_or(false),
@@ -286,11 +278,6 @@ impl DzrsConfiguration {
 
 impl Default for DzrsConfiguration {
     fn default() -> Self {
-        let download_path = download_dir()
-            .unwrap_or_default()
-            .into_os_string()
-            .into_string()
-            .unwrap_or_default();
         let audio_path = audio_dir()
             .unwrap_or_default()
             .into_os_string()
@@ -300,9 +287,7 @@ impl Default for DzrsConfiguration {
             _path: String::new(),
             _loaded: false,
             _created: false,
-            download_path: download_path,
             file_template: "%title% - %album%".into(),
-            overwrite_downloads: "true".into(),
             directory_view_path: audio_path,
             directory_output: "".into(),
             directory_move_on_save: "false".into(),
